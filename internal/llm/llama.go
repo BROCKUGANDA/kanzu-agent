@@ -26,6 +26,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
 	"sync"
@@ -115,9 +116,17 @@ func Resolve(pref string) (string, error) {
 	candidates = append(candidates,
 		"llama-cli",                              // current upstream
 		"llama.cpp-cli",                          // some distro packages
-		"main",                                   // pre-2024 upstream name
 		"./vendor/llama.cpp/build/bin/llama-cli", // scripts/setup_llama_cpp.sh
 	)
+	// The pre-2024 upstream binary was named `main`, but on Windows a bare
+	// `main` resolves through PATHEXT to system applets such as main.cpl,
+	// which is not llama.cpp. Accept it only on non-Windows systems, and on
+	// Windows only with an explicit executable extension.
+	if runtime.GOOS != "windows" {
+		candidates = append(candidates, "main")
+	} else {
+		candidates = append(candidates, "main.exe", "main.bat")
+	}
 	for _, c := range candidates {
 		if strings.ContainsAny(c, `/\`) {
 			if st, err := os.Stat(c); err == nil && !st.IsDir() {
@@ -126,6 +135,16 @@ func Resolve(pref string) (string, error) {
 					return abs, nil
 				}
 				return c, nil
+			}
+			// Windows: the same relative candidate may also exist as name.exe.
+			if runtime.GOOS == "windows" && filepath.Ext(c) == "" {
+				if st, err := os.Stat(c + ".exe"); err == nil && !st.IsDir() {
+					abs, err := filepath.Abs(c + ".exe")
+					if err == nil {
+						return abs, nil
+					}
+					return c + ".exe", nil
+				}
 			}
 			continue
 		}
