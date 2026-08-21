@@ -1,0 +1,52 @@
+# ── Model weights — never commit these (ADTC rule 2) ─────────────────────────
+model/*.gguf
+model/*.gguf.partial
+model/*.bin
+model/*.safetensors
+
+# ── Profiler / benchmark output ───────────────────────────────────────────────
+submission.json
+audit.json
+verdict.json
+bench/*.json
+bench/*.log
+
+# ── Kanzu runtime state (rebuildable from fixtures + knowledge/) ──────────────
+var/
+*.db
+*.db-shm
+*.db-wal
+data/kanzu.db*
+
+# ── Go build artefacts ───────────────────────────────────────────────────────
+bin/
+dist/
+kanzu
+kanzu.exe
+*.test
+*.out
+coverage.txt
+
+# ── Offline fine-tuning workspace (never part of the shipped artefact) ────────
+training/.venv/
+training/out/
+training/checkpoints/
+training/*.jsonl
+training/llama.cpp/
+
+# ── Third-party toolchain fetched by scripts/setup_llama_cpp.sh ───────────────
+vendor/llama.cpp/
+.tools/
+
+# ── Python (profiler venv) ───────────────────────────────────────────────────
+__pycache__/
+*.pyc
+.venv/
+.uv-cache/
+
+# ── Editors / OS ─────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp

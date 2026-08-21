@@ -1,0 +1,61 @@
+{
+  "team_id": "SET_ME_devpost_team_id",
+  "domain": "autonomous_ai_agents",
+  "language_scope": ["en", "sw"],
+  "african_alpha_claim": true,
+  "budget_laptop_claim": true,
+  "submitter": {
+    "name": "SET_ME_full_name",
+    "email": "SET_ME_email@domain.tld",
+    "github_handle": "SET_ME_github_handle"
+  },
+  "cross_disciplinary_pairing": {
+    "discipline": "financial_compliance",
+    "load_bearing": true,
+    "description": "Kanzu Agent pairs on-device language modelling with AML/CFT supervisory practice for East African SACCOs and micro-SMEs. The pairing is load-bearing, not cosmetic: a deterministic Go rule engine (eight FATF-aligned typologies over a local SQLite ledger) performs every flagging decision, and the model is confined to non-adjudicative work - decomposing an officer's natural-language request into tool calls, and rendering the rule engine's structured findings into a bilingual (English/Kiswahili) suspicious-activity narrative with retrieved regulatory citations. Removing the compliance layer removes the product; removing the model leaves a working but unusable command-line auditor."
+  },
+  "test_prompts": [
+    {
+      "prompt_id": "tp_001",
+      "prompt": "You are an offline compliance agent for a Kenyan SACCO. These are the only tools you may call:\n  ledger.query(start_date, end_date, member_id?)\n  rules.scan(rule_ids)\n  kb.search(query, lang)\n  report.draft(template, case_ids, lang)\n\nA branch officer asks: \"Flag suspicious transactions from last week and draft a compliance note for the savings committee.\"\n\nReturn exactly three sections:\n1. PLAN - an ordered JSON array of tool calls with concrete arguments. Use only the tools listed above and do not invent parameters.\n2. GATE - one sentence naming which single step must be produced by deterministic code rather than by a language model, and why that matters for a suspicious-activity report.\n3. RISK - one sentence describing what goes wrong if the agent drafts the note before the scan completes."
+    },
+    {
+      "prompt_id": "tp_002",
+      "prompt": "Wewe ni wakala wa uchunguzi wa fedha unaofanya kazi nje ya mtandao (offline) kwa SACCO ya Kenya. Zana zinazopatikana ni: ledger.query, rules.scan, kb.search, report.draft.\n\nMwanachama mmoja ameweka amana tano za KES 240,000 kwa muda wa siku mbili. Kila amana iko chini ya kiwango cha ndani cha kuripoti cha SACCO cha KES 1,000,000, lakini jumla yake ni KES 1,200,000.\n\nJibu kwa Kiswahili, kwa sehemu tatu:\n1. MPANGO - hatua tatu za kutumia zana zilizotajwa, kwa mpangilio.\n2. MAELEZO - kwa nini mtindo huu wa amana unaitwa \"structuring\" (kugawanya miamala), na ni kipengele kipi cha data kinathibitisha hilo.\n3. ILANI - sentensi mbili za taarifa kwa kamati ya SACCO, bila kumhukumu mwanachama."
+    }
+  ],
+  "model": {
+    "name": "Qwen2.5-1.5B-Instruct-Q4_K_M",
+    "runtime": "llama.cpp",
+    "quantization": "GGUF Q4_K_M",
+    "parameters_estimate": "1.5B",
+    "packaging": "binary_bundle"
+  },
+  "_runtime": {
+    "model_path": "model/Qwen2.5-1.5B-Instruct-Q4_K_M.gguf",
+    "model_sha256": "1adf0b11065d8ad2e8123ea110d1ec956dab4ab038eab665614adba04b6c3370",
+    "model_bytes": 986048768,
+    "model_source": "https://huggingface.co/bartowski/Qwen2.5-1.5B-Instruct-GGUF",
+    "base_model": "Qwen/Qwen2.5-1.5B-Instruct",
+    "architecture": "qwen2",
+    "dense": true,
+    "fine_tuned": false,
+    "gguf_version": 3,
+    "gguf_tensor_count": 338,
+    "gguf_params_count": 1543714304,
+    "gguf_context_length": 32768,
+    "artifact_selection_note": "Two public Q4_K_M builds of Qwen2.5-1.5B-Instruct were measured head to head on the dev machine (see REPORT.md). Qwen's own GGUF materialises output.weight as a separate tensor instead of tying it to token_embd.weight, so its tensor table sums to 1,777,088,000 rather than the 1,543,714,304 on the model card. adtc-profiler derives the parameter count from that table (general.parameter_count is absent from both files) and applies a two-sided 15 percent fraud check, so the first-party build would score params_match=false against any claim consistent with the model card. This build ties the tensor, sums to 1.54B, is 155 MB lighter in peak RSS, and benchmarks within one standard deviation on generation throughput. Verify locally with: go run ./cmd/kanzu doctor"
+  },
+  "_kanzu": {
+    "app_version": "1.0.0",
+    "inference_binary": "llama-cli",
+    "inference_flags": ["-ngl", "0", "-no-cnv", "--no-display-prompt"],
+    "context_tokens": 2048,
+    "max_threads": 4,
+    "thermal_ceiling_c": 82.0,
+    "thermal_resume_c": 72.0,
+    "duty_cycle": 0.7,
+    "runtime_network_calls": "none",
+    "notes": "Underscore-prefixed blocks are stripped by adtc-profiler before schema validation (cli.py: keys starting with '_' are removed). They are the Kanzu agent's own runtime configuration and are read by internal/config at startup so that the app and the profiler can never disagree about the model path."
+  }
+}

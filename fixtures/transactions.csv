@@ -1,0 +1,51 @@
+txn_id,member_id,day_offset,time,direction,channel,amount,currency,counterparty,country,narrative
+T-1001,M-001,12,10:00,credit,cash,18000.00,KES,,,Weekly market takings
+T-1002,M-001,11,11:30,credit,mobile,21500.00,KES,Mobile wallet,,Wallet top-up
+T-1003,M-001,10,09:45,credit,cash,22000.00,KES,,,Weekly market takings
+T-1004,M-001,9,15:20,credit,cash,18500.00,KES,,,Weekly market takings
+T-1005,M-001,5,09:00,credit,cash,240000.00,KES,,,Cash deposit
+T-1006,M-001,5,14:30,credit,cash,240000.00,KES,,,Cash deposit
+T-1007,M-001,4,10:15,credit,cash,240000.00,KES,,,Cash deposit
+T-1008,M-001,4,16:00,credit,cash,240000.00,KES,,,Cash deposit
+T-1009,M-001,3,11:30,credit,cash,240000.00,KES,,,Cash deposit
+T-1101,M-002,300,10:00,credit,cash,12000.00,KES,,,Share contribution
+T-1102,M-002,6,10:30,credit,transfer,400000.00,KES,Third party transfer,,Inbound transfer
+T-1103,M-002,2,14:00,credit,transfer,350000.00,KES,Third party transfer,,Inbound transfer
+T-1201,M-003,13,09:15,credit,mobile,120000.00,KES,Produce buyer,,Produce sale
+T-1202,M-003,11,10:40,credit,mobile,135000.00,KES,Produce buyer,,Produce sale
+T-1203,M-003,9,11:05,credit,transfer,128000.00,KES,Produce buyer,,Produce sale
+T-1204,M-003,8,16:30,credit,mobile,117000.00,KES,Produce buyer,,Produce sale
+T-1205,M-003,4,10:00,credit,transfer,900000.00,KES,Unknown remitter,,Inbound transfer
+T-1206,M-003,4,15:45,debit,mobile,400000.00,KES,Onward wallet,,Outbound transfer
+T-1207,M-003,3,09:20,debit,transfer,380000.00,KES,Onward account,,Outbound transfer
+T-1301,M-004,14,10:00,credit,cash,45000.00,KES,,,Salary deposit
+T-1302,M-004,10,10:00,credit,cash,45000.00,KES,,,Salary deposit
+T-1303,M-004,8,10:00,credit,mobile,32000.00,KES,Mobile wallet,,Wallet top-up
+T-1304,M-004,5,11:00,credit,transfer,350000.00,KES,Al-Sham Trading,SY,Inbound foreign transfer
+T-1305,M-004,2,13:30,credit,transfer,300000.00,KES,Al-Sham Trading,SY,Inbound foreign transfer
+T-1401,M-005,20,09:00,credit,mobile,18000.00,KES,Mobile wallet,,Wallet top-up
+T-1402,M-005,16,09:30,credit,mobile,16500.00,KES,Mobile wallet,,Wallet top-up
+T-1403,M-005,6,09:10,credit,agent,120000.00,KES,Agent float,,Agent deposit
+T-1404,M-005,4,12:25,credit,agent,135000.00,KES,Agent float,,Agent deposit
+T-1405,M-005,1,15:40,credit,agent,118500.00,KES,Agent float,,Agent deposit
+T-1501,M-006,19,10:00,credit,cash,27500.00,KES,,,Shop takings
+T-1502,M-006,15,10:00,credit,cash,31250.00,KES,,,Shop takings
+T-1503,M-006,11,10:00,credit,cash,28750.00,KES,,,Shop takings
+T-1504,M-006,6,10:00,credit,cash,50000.00,KES,,,Shop takings
+T-1505,M-006,5,10:00,credit,cash,50000.00,KES,,,Shop takings
+T-1506,M-006,3,10:00,credit,cash,50000.00,KES,,,Shop takings
+T-1507,M-006,1,10:00,credit,cash,50000.00,KES,,,Shop takings
+T-1601,M-007,18,11:00,credit,transfer,85000.00,KES,Contract payment,,Contract receipt
+T-1602,M-007,12,11:00,credit,transfer,92000.00,KES,Contract payment,,Contract receipt
+T-1603,M-007,5,11:00,credit,transfer,950000.00,KES,Contract payment,,Contract receipt
+T-1604,M-007,2,11:00,credit,transfer,920000.00,KES,Contract payment,,Contract receipt
+T-1701,M-008,13,08:30,credit,mobile,11000.00,KES,Mobile wallet,,Savings deposit
+T-1702,M-008,11,08:30,credit,mobile,9500.00,KES,Mobile wallet,,Savings deposit
+T-1703,M-008,9,08:30,credit,mobile,10500.00,KES,Mobile wallet,,Savings deposit
+T-1704,M-008,7,08:30,credit,mobile,9000.00,KES,Mobile wallet,,Savings deposit
+T-1705,M-008,5,08:30,credit,mobile,15000.00,KES,Mobile wallet,,Savings deposit
+T-1706,M-008,3,11:00,credit,mobile,22500.00,KES,Mobile wallet,,Savings deposit
+T-1707,M-008,2,14:00,debit,mobile,8750.00,KES,School fees,,School fees payment
+T-1801,M-009,17,09:00,credit,transfer,60000.00,KES,Board allowance,,Allowance
+T-1802,M-009,10,09:00,credit,transfer,60000.00,KES,Board allowance,,Allowance
+T-1803,M-009,3,10:20,credit,transfer,120000.00,KES,Aden Exchange,YE,Inbound foreign transfer
