@@ -6,7 +6,12 @@ model/
 *.safetensors
 
 # ── runtime state — rebuilt by kanzu init inside the container ───────────────
+# var/ is excluded, but the six versioned system prompts must stay in the build
+# context because the Dockerfile does `COPY var/prompts/`. The numbered
+# per-inference prompt logs and the SQLite ledger are still excluded.
 var/
+!var/prompts/
+var/prompts/prompt-[0-9]*.txt
 
 # ── training workspace ────────────────────────────────────────────────────────
 training/.venv/
