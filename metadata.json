@@ -50,7 +50,7 @@
     "app_version": "1.0.0",
     "inference_binary": "llama-cli",
     "inference_flags": ["-ngl", "0", "-no-cnv", "--no-display-prompt"],
-    "context_tokens": 2048,
+    "context_tokens": 4096,
     "max_threads": 4,
     "thermal_ceiling_c": 82.0,
     "thermal_resume_c": 72.0,

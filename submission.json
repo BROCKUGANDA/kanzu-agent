@@ -74,7 +74,7 @@
   },
   "reproducibility": {
     "git_commit_sha": "200ffcd558b132d371b1dace517673d1ffca8404",
-    "docker_image_digest": "unknown",
+    "docker_image_digest": "kanzu-agent@sha256:3e767c089ad5da04d9b7018c5364f59f217589a416d16fbdbcb54ba1b1737156",
     "random_seed": 42
   },
   "model_info": {
