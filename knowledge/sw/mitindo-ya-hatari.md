@@ -38,7 +38,7 @@ aliyotaja haizalishi mapato ya aina hiyo, unabadilisha tathmini kwa kiasi kikubw
 ## Fedha za simu na mawakala: upangaji tabaka
 
 Pochi za simu na mitandao ya mawakala ni njia kuu ya ujumuishi wa kifedha katika
-eneo hili, na kwa hiyo zinavutia kwa upangaji tabaka. Mtindo ni thamani inayoingia
+Uganda, na kwa hiyo zinavutia kwa upangaji tabaka. Mtindo ni thamani inayoingia
 kwenye akaunti na sehemu kubwa yake ikatoka tena mara moja, mara nyingi kwa njia
 tofauti na ile iliyotumika kuingiza.
 
@@ -73,7 +73,7 @@ unaotekelezwa kwa maagizo maalum, si fedha zinazoingia kadri zinapopatikana.
 
 Ushahidi hafifu peke yake, kwa kuwa mishahara, michango ya kawaida na marejesho ya
 mikopo pia ni ya kukamilika na ya kurudiwa. Unakuwa na maana pale maelezo
-hayaelezei uwiano huo, au pale viwango ni vikubwa kulinganisha na wasifu wa
+hayaelezei uwiano huo, au pale viwango ni vikubwa kulingana na wasifu wa
 mwanachama.
 
 ## Ongezeko la kasi na thamani
@@ -114,16 +114,17 @@ wa juu, kubaini chanzo cha utajiri na chanzo cha fedha, na kutumia ufuatiliaji w
 ziada endelevu.
 
 Hali ya kuwa mtu mwenye nyadhifa za kisiasa ni uainishaji wa hatari, si tuhuma.
-Katika mazingira ya chama, watu hawa mara nyingi ni wa hapa: viongozi wa kaunti,
-wanachama wa bodi za mashirika ya umma, maafisa wakuu wa vyama vingine. Watu wa
-ndani wanavutia wajibu sawa wa ufuatiliaji wa ziada kama wa nje pale tathmini ya
-hatari inaunga mkono hilo.
+Katika mazingira ya chama cha SACCO Uganda, watu hawa mara nyingi ni wa hapa:
+Wabunge, mwenyekiti wa wilaya, Makamishna Wakazi wa Wilaya (RDC), wanachama wa
+bodi za mashirika ya umma, maafisa wakuu wa vyama vingine. Watu wa ndani wanavutia
+wajibu sawa wa ufuatiliaji wa ziada kama wa nje pale tathmini ya hatari inaunga
+mkono hilo.
 
 ## Ilani ya shughuli za kutiliwa shaka: yanayotakiwa na yasiyotakiwa
 
 Inapaswa kueleza mtindo uliozingatiwa, thamani iliyohusika, vitambulisho vya miamala
 vinavyoithibitisha, kipindi ilichokusanywa, kiwango au kipimo kilichotumika, na
-wajibu mahususi ambao taasisi inautekeleza kwa kuripoti.
+wajibu mahususi ambao taasisi inautekeleza kwa kuripoti kwa FIA ya Uganda.
 
 Haipaswi kudai kwamba kosa lilitendeka, kutaja jina la uhalifu, au kutoa hitimisho
 la kisheria. Taasisi inaripoti shaka na ushahidi unaoiunga mkono; kuamua uhalifu ni

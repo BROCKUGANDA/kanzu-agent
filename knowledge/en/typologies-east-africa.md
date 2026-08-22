@@ -111,11 +111,11 @@ beneficial owner is a politically exposed person, and where so, to obtain senior
 management approval, establish the source of wealth and source of funds, and apply
 enhanced ongoing monitoring.
 
-PEP status is a risk classification and not an allegation. In a cooperative
-context the relevant PEPs are frequently local: county officials, board members of
-public bodies, senior officers of other cooperatives. Domestic PEPs attract the
-same enhanced monitoring duty as foreign ones where the risk assessment supports
-it.
+PEP status is a risk classification and not an allegation. In a Ugandan cooperative
+context the relevant PEPs are frequently local: Members of Parliament, district
+chairpersons, Resident District Commissioners, board members of public bodies,
+and senior officers of other cooperatives. Domestic PEPs attract the same enhanced
+monitoring duty as foreign ones where the risk assessment supports it.
 
 ## What a suspicious activity note should and should not say
 

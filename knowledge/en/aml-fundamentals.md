@@ -46,9 +46,9 @@ whether a report is warranted.
 
 Monitoring compares activity against what is expected for that member. The
 reference point is the member's own established pattern and stated purpose, not an
-institution-wide average. A market trader banking three hundred thousand shillings
-a week is unremarkable; the same figure from a member whose salary account has
-never exceeded twenty thousand is not.
+institution-wide average. A market trader banking three million shillings a week is
+unremarkable; the same figure from a member whose salary account has never exceeded
+five hundred thousand is not.
 
 Transactions that are unusual are not necessarily suspicious. The obligation is to
 examine the background and purpose, record what the examination found, and

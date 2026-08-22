@@ -150,7 +150,7 @@ func parseDocument(text, path string) document {
 	}
 	// Infer language from the containing directory (knowledge/sw/...) before
 	// front matter, which may override it.
-	if parent := filepath.Base(filepath.Dir(path)); parent == "sw" || parent == "en" {
+	if parent := filepath.Base(filepath.Dir(path)); parent == "sw" || parent == "en" || parent == "lg" {
 		doc.Lang = parent
 	}
 

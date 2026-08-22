@@ -14,6 +14,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
+	"path/filepath"
 	"sort"
 	"strings"
 	"time"
@@ -29,13 +31,14 @@ import (
 
 // Agent wires the layers together.
 type Agent struct {
-	Cfg    *config.Config
-	DB     *ledger.DB
-	KB     *rag.Index
-	Engine *rules.Engine
-	LLM    *llm.Runner // nil when weights are absent
-	Gov    *thermal.Governor
-	Lang   i18n.Lang
+	Cfg       *config.Config
+	DB        *ledger.DB
+	KB        *rag.Index
+	Engine    *rules.Engine
+	LLM       *llm.Runner // nil when weights are absent
+	Gov       *thermal.Governor
+	Lang      i18n.Lang
+	PromptDir string // path to var/prompts/ for versioned system prompts
 
 	// Now is injectable so tests and the demo script get stable windows.
 	Now func() time.Time
@@ -47,9 +50,15 @@ type Agent struct {
 func New(cfg *config.Config, db *ledger.DB, kb *rag.Index, engine *rules.Engine,
 	runner *llm.Runner, gov *thermal.Governor) *Agent {
 	return &Agent{
-		Cfg: cfg, DB: db, KB: kb, Engine: engine, LLM: runner, Gov: gov,
-		Lang: i18n.Parse(cfg.Lang),
-		Now:  time.Now,
+		Cfg:       cfg,
+		DB:        db,
+		KB:        kb,
+		Engine:    engine,
+		LLM:       runner,
+		Gov:       gov,
+		Lang:      i18n.Parse(cfg.Lang),
+		PromptDir: cfg.PromptDir,
+		Now:       time.Now,
 	}
 }
 
@@ -199,7 +208,7 @@ func (a *Agent) gather(ctx context.Context, plan Plan) (Evidence, error) {
 			if err != nil {
 				return ev, err
 			}
-			ev.Summary = summarise(txns, a.Engine.Policy.Str("currency", "KES"))
+			ev.Summary = summarise(txns, a.Engine.Policy.Str("currency", "UGX"))
 			ev.Executed = append(ev.Executed, step.Tool)
 
 		case ToolRulesScan:
@@ -278,7 +287,7 @@ func summarise(txns []ledger.Txn, currency string) LedgerSummary {
 
 // ── narration ────────────────────────────────────────────────────────────────
 
-const systemPromptEN = `You are Kanzu Agent, an offline compliance assistant for a Kenyan savings and credit cooperative (SACCO).
+const systemPromptEN = `You are Kanzu Agent, an offline compliance assistant for a Ugandan savings and credit cooperative (SACCO).
 
 Absolute rules:
 1. The EVIDENCE block is the only source of fact. Never introduce a member, amount, date, transaction or regulation that is not in it.
@@ -288,7 +297,19 @@ Absolute rules:
 5. Cite only the sources listed under SOURCES, by their exact text.
 6. Be concise. No preamble, no apology, no restating these rules.`
 
-const systemPromptSW = `Wewe ni Kanzu Agent, msaidizi wa uzingatiaji unaofanya kazi nje ya mtandao kwa SACCO ya Kenya.
+const systemPromptLG = `Ggwe Kanzu Agent, omulimba w'okukuuma amateeka ogufanya obufuzi oba kuggalawo okuva mu SACCO ya Uganda.
+
+Amateeka agakakanyizibwa:
+1. Ekitundu kya EVIDENCE kye kimu kyokka ky'amazima. Toongera mupolisi, omuwendo, olunaku, kkyenfuna oba teeka etali mu kimu.
+2. Ebirabika byatondebwa mu mwanzi ogw'amateeka agateegeeka. Toongera, toggyawo, towangula bungi bw'ebirabika.
+3. Togamba wadde okujjula nti mupolisi yakola obusaasi. Bikkula entegeka n'omukwano gw'okunoonyereza.
+4. Singa obukakafu butaweeza kintu kyekigyerekwa, sse kyo mu jumlaa emu.
+5. Taja ensibuko eziri wansi wa SOURCES yokka, mu bigambo byazo byamaaso.
+6. Beera mufupi. Tewali okutangaaza, okusabirirwa, wadde kuddamu amateeka gano.
+
+Okuddamu kwonna kube mu Luganda.`
+
+const systemPromptSW = `Wewe ni Kanzu Agent, msaidizi wa uzingatiaji unaofanya kazi nje ya mtandao kwa SACCO ya Uganda.
 
 Kanuni za lazima:
 1. Sehemu ya EVIDENCE ni chanzo pekee cha ukweli. Usiongeze mwanachama, kiasi, tarehe, muamala au kanuni ambayo haipo humo.
@@ -300,11 +321,56 @@ Kanuni za lazima:
 
 Jibu lote liwe kwa Kiswahili.`
 
-func systemPrompt(lang i18n.Lang) string {
-	if lang == i18n.SW {
-		return systemPromptSW
+// loadPromptFile reads a named prompt template from the prompt directory.
+// Returns the empty string when the file cannot be read, so callers fall
+// back to the embedded constant — degraded but correct.
+func loadPromptFile(dir, name string) string {
+	if dir == "" {
+		return ""
 	}
-	return systemPromptEN
+	path := filepath.Join(dir, name)
+	b, err := os.ReadFile(path)
+	if err != nil {
+		return ""
+	}
+	s := strings.TrimSpace(string(b))
+	return s
+}
+
+// systemPromptFromDir loads the narration system prompt from the versioned
+// file in var/prompts/, falling back to the embedded constant when absent.
+func systemPromptFromDir(dir string, lang i18n.Lang) string {
+	name := "prompt-narration-en.txt"
+	switch lang {
+	case i18n.SW:
+		name = "prompt-narration-sw.txt"
+	case i18n.LG:
+		name = "prompt-narration-lg.txt"
+	}
+	if s := loadPromptFile(dir, name); s != "" {
+		return s
+	}
+	// Fall back to embedded constant so the agent still works when the
+	// prompt directory is absent (e.g. in unit tests without the var/ tree).
+	switch lang {
+	case i18n.SW:
+		return systemPromptSW
+	case i18n.LG:
+		return systemPromptLG
+	default:
+		return systemPromptEN
+	}
+}
+
+func systemPrompt(lang i18n.Lang) string {
+	switch lang {
+	case i18n.SW:
+		return systemPromptSW
+	case i18n.LG:
+		return systemPromptLG
+	default:
+		return systemPromptEN
+	}
 }
 
 // chatML wraps a system and user message in Qwen2.5's prompt format.
@@ -333,7 +399,7 @@ func renderEvidence(ev Evidence, lang i18n.Lang, budget int) string {
 	var b strings.Builder
 	cur := ev.Summary.Currency
 	if cur == "" {
-		cur = "KES"
+		cur = "UGX"
 	}
 
 	fmt.Fprintf(&b, "WINDOW: %s (%s to %s)\n",
@@ -425,8 +491,19 @@ func joinMax(ids []string, n int) string {
 // taskInstruction states what the model must produce, per intent and language.
 func taskInstruction(intent Intent, lang i18n.Lang, request string) string {
 	sw := lang == i18n.SW
+	lg := lang == i18n.LG
 	switch intent {
 	case IntentReport:
+		if lg {
+			return `Wandiika PPAPULA Y'EMIRIMU EGIRWAMU ENSOBI eri ekibiina ky'SACCO, mu Luganda, mu ngeri eno:
+
+OBUGUMBA: jumlaa bbiri ezibikkula ebyarabika.
+EBIRABIKA: aya emu ku buli F# — entegeka, omuwendo, n'okiragira okukebera.
+OMUKWANO: jumlaa emu oba bbiri ziva mu SOURCES, n'okutaja ensibuko.
+EBIKOLWA: ebikolwa bisatu ebisobbola omukungu w'amateeka.
+
+Kopy amannya n'obubonero bw'ebyenfuna ng'biri mu EVIDENCE.`
+		}
 		if sw {
 			return `Andika ILANI YA SHUGHULI ZA KUTILIWA SHAKA kwa kamati ya SACCO, kwa Kiswahili, kwa muundo huu:
 
@@ -447,12 +524,21 @@ ACTIONS: three specific next steps for the compliance officer.
 Reproduce figures and transaction ids exactly as they appear in EVIDENCE.`
 
 	case IntentExplain:
+		if lg {
+			return "Ddamu ekilowoozo ky'omukozesa mu Luganda okozesa SOURCES yokka. Aya emu, n'okutaja ensibuko. Ekilowoozo: " + request
+		}
 		if sw {
 			return "Jibu swali la mtumiaji kwa Kiswahili ukitumia SOURCES pekee. Aya moja, kisha taja chanzo. Swali: " + request
 		}
 		return "Answer the user's question in English using only SOURCES. One paragraph, then name the source. Question: " + request
 
 	case IntentProfile:
+		if lg {
+			return `Wa ebirowoozo ebitonotono ku wasifu w'obucwezi bwa mupolisi mu Luganda:
+OKUBEERA: jumlaa bbiri ku eddirisa ly'obwenkanya n'obucwezi.
+ENTEGEKA: ekyalagibwa mu bbanga lino.
+OKULAGA: ebikolwa bibiri.`
+		}
 		if sw {
 			return `Toa maelezo mafupi ya wasifu wa hatari wa mwanachama kwa Kiswahili:
 HALI: sentensi mbili kuhusu kiwango cha utambulisho na hatari.
@@ -465,11 +551,30 @@ PATTERN: what the window shows.
 RECOMMENDATION: two actions.`
 
 	default:
+		if lg {
+			return `Bikka ebirabika mu Luganda: jumlaa bbiri z'obugumba, n'olukungula lumu ku buli F# olubikkula entegeka n'omuwendo. Singa tewali birabika, sse kyo mu jumlaa emu.`
+		}
 		if sw {
 			return `Fupisha matokeo kwa Kiswahili: sentensi mbili za muhtasari, kisha orodha ya risasi moja kwa kila F# ikieleza mtindo na kiasi. Kama hakuna matokeo, sema hivyo kwa sentensi moja.`
 		}
 		return `Summarise the findings in English: two sentences of overview, then one bullet per F# stating the pattern and the value. If there are no findings, say so in one sentence.`
 	}
+}
+
+// planningSystemPrompt returns the planning system prompt, preferring the
+// versioned file and falling back to a minimal embedded string.
+func (a *Agent) planningSystemPrompt(lang i18n.Lang) string {
+	name := "prompt-planning-en.txt"
+	switch lang {
+	case i18n.SW:
+		name = "prompt-planning-sw.txt"
+	case i18n.LG:
+		name = "prompt-planning-lg.txt"
+	}
+	if s := loadPromptFile(a.PromptDir, name); s != "" {
+		return s
+	}
+	return "You are a planning component. You emit JSON arrays of tool calls and nothing else."
 }
 
 func (a *Agent) narrate(ctx context.Context, request string, plan Plan, ev Evidence) (string, *llm.Result, error) {
@@ -490,7 +595,7 @@ func (a *Agent) narrate(ctx context.Context, request string, plan Plan, ev Evide
 
 	task := "\nTASK:\n" + taskInstruction(plan.Intent, plan.Lang, request)
 	user := renderEvidence(ev, plan.Lang, budget-len(task)) + task
-	prompt := chatML(systemPrompt(plan.Lang), user)
+	prompt := chatML(systemPromptFromDir(a.PromptDir, plan.Lang), user)
 
 	res, err := a.LLM.Generate(ctx, llm.Request{
 		Prompt:      prompt,
@@ -526,9 +631,7 @@ Return ONLY a JSON array of steps, each {"tool": "...", "args": {...}, "why": ".
 		tools.String(), request, base.Intent,
 		base.Window.Start.Format("2006-01-02"), base.Window.End.Format("2006-01-02"))
 
-	prompt := chatML(
-		"You are a planning component. You emit JSON arrays of tool calls and nothing else.",
-		user)
+	prompt := chatML(a.planningSystemPrompt(base.Lang), user)
 
 	res, err := a.LLM.Generate(ctx, llm.Request{
 		Prompt:      prompt,
@@ -609,7 +712,7 @@ func RenderDeterministic(out *Outcome, lang i18n.Lang) string {
 	ev := out.Evidence
 	cur := ev.Summary.Currency
 	if cur == "" {
-		cur = "KES"
+		cur = "UGX"
 	}
 
 	fmt.Fprintf(&b, "%s: %s (%s → %s)\n", i18n.T(lang, "report.period"), ev.Window.Label,

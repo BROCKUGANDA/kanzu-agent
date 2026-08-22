@@ -1,0 +1,101 @@
+name: Docker — Build, Push & Update Digest
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*.*.*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write   # to commit submission.json digest update
+  packages: write   # to push to GHCR
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository_owner }}/kanzu-agent
+
+jobs:
+  docker:
+    name: Build & push Docker image
+    runs-on: ubuntu-latest
+    outputs:
+      digest: ${{ steps.push.outputs.digest }}
+      image_tag: ${{ steps.meta.outputs.tags }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # need full history for git describe
+
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+
+      # ── Login to GitHub Container Registry ──────────────────────────────
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # ── Generate tags and labels ─────────────────────────────────────────
+      - name: Docker metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=ref,event=branch
+            type=sha,prefix=sha-,format=short
+          labels: |
+            org.opencontainers.image.title=Kanzu Agent
+            org.opencontainers.image.description=Offline trilingual AML compliance copilot for Ugandan SACCOs
+            org.opencontainers.image.vendor=BROCKUGANDA
+            org.opencontainers.image.licenses=MIT
+
+      # ── Build and push ───────────────────────────────────────────────────
+      - name: Build and push
+        id: push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            LLAMA_TAG=b10580
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          provenance: true
+          sbom: true
+
+      # ── Patch submission.json with real digest ───────────────────────────
+      - name: Update submission.json docker_image_digest
+        env:
+          DIGEST: ${{ steps.push.outputs.digest }}
+          IMAGE: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+        run: |
+          python3 - <<'EOF'
+          import json, os
+          digest = os.environ["DIGEST"]
+          image  = os.environ["IMAGE"]
+          ref    = f"{image}@{digest}"
+          with open("submission.json") as f:
+              s = json.load(f)
+          s["reproducibility"]["docker_image_digest"] = ref
+          with open("submission.json", "w") as f:
+              json.dump(s, f, indent=2)
+              f.write("\n")
+          print(f"✓ submission.json updated: {ref}")
+          EOF
+
+      - name: Commit digest to repo
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "ci: update docker_image_digest in submission.json [skip ci]"
+          file_pattern: submission.json
+          commit_user_name: "github-actions[bot]"
+          commit_user_email: "41898282+github-actions[bot]@users.noreply.github.com"

@@ -1,0 +1,87 @@
+{
+  "schema_version": "1.1.0",
+  "profiler_version": "adtc-profiler 0.1.0",
+  "submission": {
+    "team_id": "1148777",
+    "domain": "autonomous_ai_agents",
+    "language_scope": [
+      "en",
+      "sw",
+      "lg"
+    ],
+    "african_alpha_claim": true,
+    "budget_laptop_claim": true,
+    "submitter": {
+      "name": "Okot Araa Andrew Aaron Otema",
+      "email": "otemaach@gmail.com",
+      "github_handle": "BROCKUGANDA"
+    },
+    "cross_disciplinary_pairing": {
+      "discipline": "financial_compliance",
+      "load_bearing": true,
+      "description": "Kanzu Agent pairs on-device language modelling with AML/CFT supervisory practice for Ugandan SACCOs and micro-SMEs. The pairing is load-bearing, not cosmetic: a deterministic Go rule engine (ten FATF-aligned typologies over a local SQLite ledger, calibrated to UGX thresholds under Uganda's Anti-Money Laundering Act 2013) performs every flagging decision, and the model is confined to non-adjudicative work â€” decomposing an officer's natural-language request into tool calls, and rendering the rule engine's structured findings into a trilingual (English/Kiswahili/Luganda) suspicious-activity narrative with retrieved regulatory citations for filing with Uganda's Financial Intelligence Authority (FIA). Removing the compliance layer removes the product; removing the model leaves a working but plain-text command-line auditor."
+    },
+    "test_prompts": [
+      {
+        "prompt_id": "tp_001",
+        "prompt": "You are an offline compliance agent for a Ugandan SACCO. These are the only tools you may call:\n  ledger.query(start_date, end_date, member_id?)\n  rules.scan(rule_ids)\n  kb.search(query, lang)\n  report.draft(template, case_ids, lang)\n\nA branch officer asks: \"Flag suspicious transactions from last week and draft a compliance note for the savings committee.\"\n\nReturn exactly three sections:\n1. PLAN - an ordered JSON array of tool calls with concrete arguments. Use only the tools listed above and do not invent parameters.\n2. GATE - one sentence naming which single step must be produced by deterministic code rather than by a language model, and why that matters for a suspicious-activity report filed with Uganda's Financial Intelligence Authority (FIA).\n3. RISK - one sentence describing what goes wrong if the agent drafts the note before the scan completes."
+      },
+      {
+        "prompt_id": "tp_002",
+        "prompt": "Wewe ni wakala wa uchunguzi wa fedha unaofanya kazi nje ya mtandao (offline) kwa SACCO ya Uganda. Zana zinazopatikana ni: ledger.query, rules.scan, kb.search, report.draft.\n\nMwanachama mmoja ameweka amana tano za UGX 6,720,000 kwa muda wa siku mbili. Kila amana iko chini ya kiwango cha ndani cha kuripoti cha SACCO cha UGX 28,000,000, lakini jumla yake ni UGX 33,600,000.\n\nJibu kwa Kiswahili, kwa sehemu tatu:\n1. MPANGO - hatua tatu za kutumia zana zilizotajwa, kwa mpangilio.\n2. MAELEZO - kwa nini mtindo huu wa amana unaitwa \"structuring\" (kugawanya miamala), na ni kipengele kipi cha data kinathibitisha hilo.\n3. ILANI - sentensi mbili za taarifa kwa kamati ya SACCO na Mamlaka ya Ujasusi wa Fedha (FIA) ya Uganda, bila kumhukumu mwanachama."
+      }
+    ],
+    "model": {
+      "name": "Qwen2.5-1.5B-Instruct-Q4_K_M",
+      "runtime": "llama.cpp",
+      "quantization": "GGUF Q4_K_M",
+      "parameters_estimate": "1.5B",
+      "packaging": "binary_bundle"
+    }
+  },
+  "environment": {
+    "measured_on": "participant_laptop",
+    "cpu_model": "Intel64 Family 6 Model 154 Stepping 4, GenuineIntel",
+    "ram_gb": 15.7,
+    "gpu": "none",
+    "os": "Windows-11-10.0.26200-SP0"
+  },
+  "throughput": {
+    "tokens_per_second_generation": 13.06,
+    "first_token_latency_ms": 4186.33,
+    "prompt_tokens": 512,
+    "generated_tokens": 128
+  },
+  "memory": {
+    "peak_rss_mb": 1587.26,
+    "steady_state_rss_mb": 1340.94,
+    "peak_vms_mb": 873.04
+  },
+  "accuracy": [
+    {
+      "benchmark": "arc_easy",
+      "dataset_version": "lm-eval-harness",
+      "language": "en",
+      "samples": 50,
+      "score": 0.76,
+      "metric": "acc_norm"
+    }
+  ],
+  "cpu_thermal": {
+    "cpu_percent_p99": 100.0,
+    "core_temp_c_peak": null,
+    "throttled": false
+  },
+  "reproducibility": {
+    "git_commit_sha": "4019b7a6a28d",
+    "docker_image_digest": "unknown",
+    "random_seed": 42
+  },
+  "model_info": {
+    "params_count": 1543714304,
+    "context_length": 32768,
+    "architecture": "qwen2",
+    "claimed_params_estimate": "1.5B",
+    "params_match": true
+  }
+}

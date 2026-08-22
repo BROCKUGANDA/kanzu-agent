@@ -57,6 +57,7 @@ type Config struct {
 	MetadataPath  string
 	ModelPath     string
 	DBPath        string
+	PromptDir     string // var/prompts/ — versioned system prompts for narration and planning
 	KnowledgeDir  string
 	FixturesDir   string
 	LlamaCLI      string
@@ -165,6 +166,7 @@ func Load() (*Config, error) {
 		MetadataPath:      metaPath,
 		ModelPath:         filepath.Join(root, filepath.FromSlash(meta.Runtime.ModelPath)),
 		DBPath:            filepath.Join(root, "var", "kanzu.db"),
+		PromptDir:         filepath.Join(root, "var", "prompts"),
 		KnowledgeDir:      filepath.Join(root, "knowledge"),
 		FixturesDir:       filepath.Join(root, "fixtures"),
 		LlamaCLI:          firstNonEmpty(meta.Kanzu.InferenceBinary, "llama-cli"),
@@ -239,6 +241,38 @@ func (c *Config) EnsureStateDir() error {
 	return os.MkdirAll(filepath.Dir(c.DBPath), 0o755)
 }
 
+// PromptFiles returns the six required named prompt file paths (EN, SW, LG).
+func (c *Config) PromptFiles() map[string]string {
+	d := c.PromptDir
+	return map[string]string{
+		"narration-en": filepath.Join(d, "prompt-narration-en.txt"),
+		"narration-sw": filepath.Join(d, "prompt-narration-sw.txt"),
+		"narration-lg": filepath.Join(d, "prompt-narration-lg.txt"),
+		"planning-en":  filepath.Join(d, "prompt-planning-en.txt"),
+		"planning-sw":  filepath.Join(d, "prompt-planning-sw.txt"),
+		"planning-lg":  filepath.Join(d, "prompt-planning-lg.txt"),
+	}
+}
+
+// CheckPromptFiles verifies all six prompt templates exist and are non-empty.
+// Returns a map of name → error (nil when the file is good).
+func (c *Config) CheckPromptFiles() map[string]error {
+	results := make(map[string]error, 6)
+	for name, path := range c.PromptFiles() {
+		st, err := os.Stat(path)
+		if err != nil {
+			results[name] = fmt.Errorf("missing: %s", path)
+			continue
+		}
+		if st.Size() == 0 {
+			results[name] = fmt.Errorf("empty: %s", path)
+			continue
+		}
+		results[name] = nil
+	}
+	return results
+}
+
 // defaultThreads picks a thread count that leaves the machine responsive and
 // avoids sustained all-core saturation, which is what drives the ADTC thermal
 // penalty. On the 4-core Standard Laptop this yields 3.
@@ -262,6 +296,8 @@ func normaliseLang(v string) string {
 	switch {
 	case strings.HasPrefix(v, "sw"):
 		return "sw"
+	case strings.HasPrefix(v, "lg"), v == "luganda":
+		return "lg"
 	default:
 		return "en"
 	}

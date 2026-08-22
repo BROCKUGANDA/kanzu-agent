@@ -1,20 +1,21 @@
-// Package i18n carries Kanzu Agent's bilingual (English / Kiswahili) surface.
+// Package i18n carries Kanzu Agent's trilingual (English / Kiswahili / Luganda)
+// surface.
 //
 // Why this package exists at all: the base model (Qwen2.5-1.5B-Instruct) has
-// solid instruction-following but Kiswahili is not among its officially
-// supported languages. Relying on its zero-shot Kiswahili generation for a
-// compliance artefact would be irresponsible. So Kiswahili functionality is
+// solid instruction-following but Kiswahili and Luganda are not among its
+// officially supported languages. Relying on its zero-shot generation for a
+// compliance artefact would be irresponsible. So non-English functionality is
 // delivered structurally instead:
 //
 //  1. All operator-facing chrome, intents, tool names and report scaffolding are
 //     translated deterministically here (no model involved).
-//  2. Retrieval runs over a Kiswahili knowledge corpus, so Kiswahili regulatory
+//  2. Retrieval runs over language-specific knowledge corpora, so regulatory
 //     text reaches the prompt verbatim and the model paraphrases rather than
 //     invents.
-//  3. The lexicon below expands queries across languages, so a Kiswahili query
+//  3. The lexicon below expands queries across languages, so a Luganda query
 //     retrieves English source material and vice versa.
 //
-// The model therefore fills constrained slots inside a Kiswahili scaffold it did
+// The model therefore fills constrained slots inside a language scaffold it did
 // not have to construct. This is the load-bearing part of the african_alpha
 // claim, and it degrades gracefully rather than hallucinating.
 package i18n
@@ -24,12 +25,13 @@ import (
 	"strings"
 )
 
-// Lang is a BCP-47 subset: "en" or "sw".
+// Lang is a BCP-47 subset: "en", "sw", or "lg".
 type Lang string
 
 const (
 	EN Lang = "en"
 	SW Lang = "sw"
+	LG Lang = "lg"
 )
 
 // Parse maps loose user input onto a supported language.
@@ -38,6 +40,8 @@ func Parse(v string) Lang {
 	switch {
 	case strings.HasPrefix(v, "sw"), v == "kiswahili", v == "swahili":
 		return SW
+	case strings.HasPrefix(v, "lg"), v == "luganda", v == "oluganda":
+		return LG
 	default:
 		return EN
 	}
@@ -45,10 +49,14 @@ func Parse(v string) Lang {
 
 // Name returns the endonym, used in report headers.
 func (l Lang) Name() string {
-	if l == SW {
+	switch l {
+	case SW:
 		return "Kiswahili"
+	case LG:
+		return "Luganda"
+	default:
+		return "English"
 	}
-	return "English"
 }
 
 // catalog holds every operator-visible string. Keys are stable identifiers so a
@@ -57,50 +65,58 @@ var catalog = map[string]map[Lang]string{
 	"app.tagline": {
 		EN: "Offline compliance copilot for savings groups and micro-SMEs",
 		SW: "Msaidizi wa uzingatiaji unaofanya kazi nje ya mtandao kwa vikoba na biashara ndogo",
+		LG: "Omulimba ogw'okukuuma amateeka ag'ekibiina ky'abasigalawo n'abavuzi abatonotono, ogufanya obufuzi oba kuggalawo",
 	},
 	"chat.banner": {
 		EN: "Kanzu Agent — fully offline. Type :help for commands, :quit to exit.",
 		SW: "Kanzu Agent — nje ya mtandao kabisa. Andika :help kwa amri, :quit kutoka.",
+		LG: "Kanzu Agent — togatta ku mukutu. Wandiika :help eri ebiragiro, :quit okuva.",
 	},
-	"chat.prompt": {EN: "you", SW: "wewe"},
+	"chat.prompt": {EN: "you", SW: "wewe", LG: "ggwe"},
 	"chat.thinking": {
 		EN: "working (deterministic checks first, then narration)…",
 		SW: "inafanya kazi (ukaguzi wa uhakika kwanza, kisha maelezo)…",
+		LG: "kola (okukebera okutegeeka olubereberye, n'emboozi)…",
 	},
 	"chat.help": {
-		EN: "  :lang en|sw   switch language\n  :stats        show thermal + throughput stats\n  :plan         show the last execution plan\n  :quit         exit",
-		SW: "  :lang en|sw   badilisha lugha\n  :stats        onyesha hali ya joto na kasi\n  :plan         onyesha mpango wa mwisho\n  :quit         toka",
+		EN: "  :lang en|sw|lg switch language\n  :stats        show thermal + throughput stats\n  :plan         show the last execution plan\n  :quit         exit",
+		SW: "  :lang en|sw|lg badilisha lugha\n  :stats        onyesha hali ya joto na kasi\n  :plan         onyesha mpango wa mwisho\n  :quit         toka",
+		LG: "  :lang en|sw|lg kyusa olulimi\n  :stats        laga obubugumu n'omuvudde\n  :plan         laga entegeka eyasooka\n  :quit         vaamu",
 	},
-	"plan.header":     {EN: "EXECUTION PLAN", SW: "MPANGO WA UTEKELEZAJI"},
-	"evidence.header": {EN: "DETERMINISTIC EVIDENCE", SW: "USHAHIDI WA UHAKIKA"},
-	"report.header":   {EN: "SUSPICIOUS ACTIVITY NOTE", SW: "TAARIFA YA SHUGHULI ZA KUTILIWA SHAKA"},
-	"report.subject":  {EN: "Member", SW: "Mwanachama"},
-	"report.period":   {EN: "Period", SW: "Kipindi"},
-	"report.typology": {EN: "Typology", SW: "Aina ya hatari"},
-	"report.findings": {EN: "Findings", SW: "Matokeo"},
+	"plan.header":     {EN: "EXECUTION PLAN", SW: "MPANGO WA UTEKELEZAJI", LG: "ENTEGEKA Y'OKUKOLA"},
+	"evidence.header": {EN: "DETERMINISTIC EVIDENCE", SW: "USHAHIDI WA UHAKIKA", LG: "OBUKAKAFU OBUTEGEEKA"},
+	"report.header":   {EN: "SUSPICIOUS ACTIVITY NOTE", SW: "TAARIFA YA SHUGHULI ZA KUTILIWA SHAKA", LG: "PPAPULA Y'EMIRIMU EGIRWAMU ENSOBI"},
+	"report.subject":  {EN: "Member", SW: "Mwanachama", LG: "Mupolisi"},
+	"report.period":   {EN: "Period", SW: "Kipindi", LG: "Obudde"},
+	"report.typology": {EN: "Typology", SW: "Aina ya hatari", LG: "Engeri y'obucwezi"},
+	"report.findings": {EN: "Findings", SW: "Matokeo", LG: "Ebirabika"},
 	"report.citations": {
 		EN: "Sources consulted (local knowledge base)",
 		SW: "Vyanzo vilivyotumika (hifadhi ya maarifa ya ndani)",
+		LG: "Ensibuko ezaakulabirako (obutonde bw'obunnoonyerezi obw'omu nju)",
 	},
 	"report.disclaimer": {
 		EN: "Generated on-device by Kanzu Agent. Findings are produced by deterministic rules; the narrative is model-assisted. A human compliance officer must review and sign before any regulatory filing. No accusation of criminal conduct is implied.",
 		SW: "Imetayarishwa kwenye kifaa hiki na Kanzu Agent. Matokeo yanatokana na kanuni za uhakika; maelezo yameandikwa kwa msaada wa modeli. Afisa wa uzingatiaji lazima aipitie na kuisaini kabla ya kuwasilishwa kwa mdhibiti. Hakuna tuhuma ya uhalifu inayodokezwa.",
+		LG: "Yatongozebwa mu kifaananyi kino Kanzu Agent. Ebirabika bivaamu mu mateeka agateegeeka; ensimbi eya n'omulimba. Omukungu w'okukuuma amateeka alina kukebera n'okuwandiika ng'akikiriza nga tanatuma ku batendeka amateeka. Tewali kutijja mupolisi mu bikolwa by'obusaasi.",
 	},
 	"alerts.none": {
 		EN: "No rule triggered for the requested window. Nothing to escalate.",
 		SW: "Hakuna kanuni iliyochochewa katika kipindi kilichoombwa. Hakuna la kupandisha.",
+		LG: "Tewaliiwo teeka lyayasibwa mu bbanga ely'ebyetaago. Tewali kintu kya kugezako.",
 	},
-	"alerts.count":  {EN: "alerts raised", SW: "ilani zilizotolewa"},
-	"severity.high": {EN: "high", SW: "kubwa"},
-	"severity.med":  {EN: "medium", SW: "wastani"},
-	"severity.low":  {EN: "low", SW: "ndogo"},
+	"alerts.count":  {EN: "alerts raised", SW: "ilani zilizotolewa", LG: "endagamukutu ezayasibwa"},
+	"severity.high": {EN: "high", SW: "kubwa", LG: "nnene"},
+	"severity.med":  {EN: "medium", SW: "wastani", LG: "wakati"},
+	"severity.low":  {EN: "low", SW: "ndogo", LG: "tonotono"},
 	"inbox.empty": {
 		EN: "Queue empty. Messages accepted offline are processed here in batches.",
 		SW: "Foleni ni tupu. Ujumbe uliopokewa nje ya mtandao unashughulikiwa hapa kwa makundi.",
+		LG: "Omutindo guli mazima. Ebintu byakkirizibwa oba kuggalawo bikozesebwa wano mu nganda.",
 	},
-	"inbox.queued":    {EN: "queued for delivery when a link is available", SW: "imepangwa kutumwa mtandao utakapopatikana"},
-	"model.offline":   {EN: "model weights missing — deterministic findings only", SW: "modeli haipo — matokeo ya kanuni pekee"},
-	"thermal.cooling": {EN: "thermal guard: pausing to cool", SW: "ulinzi wa joto: inasimama ipoe"},
+	"inbox.queued":    {EN: "queued for delivery when a link is available", SW: "imepangwa kutumwa mtandao utakapopatikana", LG: "eyegereddwa okutumibwa omukutu oguweddeyo"},
+	"model.offline":   {EN: "model weights missing — deterministic findings only", SW: "modeli haipo — matokeo ya kanuni pekee", LG: "obuzito bwa mudeli bugibwa — ebirabika by'amateeka bokka"},
+	"thermal.cooling": {EN: "thermal guard: pausing to cool", SW: "ulinzi wa joto: inasimama ipoe", LG: "okusuubirira obubugumu: okusiima okuzimba"},
 }
 
 // T looks up a catalog key, falling back to English then to the key itself.
@@ -123,38 +139,38 @@ func T(l Lang, key string) string {
 // Terms are lowercase and diacritic-free to match the FTS5 tokenizer
 // configuration (unicode61 remove_diacritics 2).
 var lexicon = map[string][]string{
-	"deposit":     {"deposit", "deposits", "amana", "kuweka", "weka"},
-	"withdrawal":  {"withdrawal", "withdraw", "kutoa", "uchukuzi", "kuchomoa"},
-	"transfer":    {"transfer", "remittance", "uhamisho", "kutuma", "hawala"},
-	"cash":        {"cash", "currency", "fedha", "pesa", "taslimu"},
-	"loan":        {"loan", "credit", "mkopo", "mikopo"},
-	"savings":     {"savings", "share", "akiba", "hisa"},
-	"member":      {"member", "customer", "mwanachama", "wanachama", "mteja"},
-	"account":     {"account", "akaunti", "hesabu"},
-	"suspicious":  {"suspicious", "unusual", "kutiliwa", "shaka", "isiyo", "kawaida", "tuhuma"},
-	"structuring": {"structuring", "smurfing", "kugawanya", "mgawanyo", "kuvunja"},
-	"threshold":   {"threshold", "limit", "kiwango", "kikomo", "ukomo"},
-	"reporting":   {"reporting", "report", "kuripoti", "taarifa", "ripoti"},
-	"laundering":  {"laundering", "utakatishaji", "kusafisha"},
-	"terrorism":   {"terrorism", "financing", "ugaidi", "ufadhili"},
-	"kyc":         {"kyc", "identity", "identification", "utambulisho", "uthibitisho"},
-	"risk":        {"risk", "hatari", "athari"},
-	"dormant":     {"dormant", "inactive", "tulivu", "isiyotumika"},
-	"velocity":    {"velocity", "frequency", "kasi", "mara", "mfululizo"},
-	"crossborder": {"cross-border", "foreign", "nje", "kigeni", "mpakani"},
-	"pep":         {"pep", "politically", "exposed", "kisiasa", "mwanasiasa"},
-	"sacco":       {"sacco", "cooperative", "chama", "ushirika", "kikoba", "vikoba"},
-	"mobilemoney": {"mpesa", "m-pesa", "mobile", "wallet", "simu", "kapu"},
-	"compliance":  {"compliance", "uzingatiaji", "ufuatiliaji"},
-	"audit":       {"audit", "ukaguzi", "hesabu"},
-	"committee":   {"committee", "board", "kamati", "bodi"},
-	"week":        {"week", "weekly", "wiki"},
-	"month":       {"month", "monthly", "mwezi"},
-	"today":       {"today", "leo"},
-	"draft":       {"draft", "write", "andika", "tayarisha", "andaa"},
-	"explain":     {"explain", "why", "eleza", "kwanini", "nini"},
-	"scan":        {"scan", "check", "flag", "chunguza", "kagua", "angalia", "onyesha"},
-	"summary":     {"summary", "overview", "muhtasari", "jumla"},
+	"deposit":     {"deposit", "deposits", "amana", "kuweka", "weka", "obutunzi", "teereka"},
+	"withdrawal":  {"withdrawal", "withdraw", "kutoa", "uchukuzi", "kuchomoa", "okuggyawo", "ggyawo"},
+	"transfer":    {"transfer", "remittance", "uhamisho", "kutuma", "hawala", "okutuma", "okusindika"},
+	"cash":        {"cash", "currency", "fedha", "pesa", "taslimu", "ensimbi", "sente"},
+	"loan":        {"loan", "credit", "mkopo", "mikopo", "enjatula", "okweyambisako"},
+	"savings":     {"savings", "share", "akiba", "hisa", "okutereka", "ekyama"},
+	"member":      {"member", "customer", "mwanachama", "wanachama", "mteja", "mupolisi", "bapolisi"},
+	"account":     {"account", "akaunti", "hesabu", "akawunti"},
+	"suspicious":  {"suspicious", "unusual", "kutiliwa", "shaka", "isiyo", "kawaida", "tuhuma", "ensobi", "obupooza"},
+	"structuring": {"structuring", "smurfing", "kugawanya", "mgawanyo", "kuvunja", "okugabanya", "okusalamu"},
+	"threshold":   {"threshold", "limit", "kiwango", "kikomo", "ukomo", "ekigatte", "omugereka"},
+	"reporting":   {"reporting", "report", "kuripoti", "taarifa", "ripoti", "ppapula", "okuwanika"},
+	"laundering":  {"laundering", "utakatishaji", "kusafisha", "okwoza", "okukoza"},
+	"terrorism":   {"terrorism", "financing", "ugaidi", "ufadhili", "obwetamivu", "okuteeka"},
+	"kyc":         {"kyc", "identity", "identification", "utambulisho", "uthibitisho", "obwenkanya", "okumanya"},
+	"risk":        {"risk", "hatari", "athari", "obucwezi", "engeri"},
+	"dormant":     {"dormant", "inactive", "tulivu", "isiyotumika", "eyekwatako", "ekiri"},
+	"velocity":    {"velocity", "frequency", "kasi", "mara", "mfululizo", "omuvudde", "emirundi"},
+	"crossborder": {"cross-border", "foreign", "nje", "kigeni", "mpakani", "ensi", "omuzanvu"},
+	"pep":         {"pep", "politically", "exposed", "kisiasa", "mwanasiasa", "omukulembeze", "gavumenti"},
+	"sacco":       {"sacco", "cooperative", "chama", "ushirika", "kikoba", "vikoba", "ekibiina", "omwoyo"},
+	"mobilemoney": {"mpesa", "m-pesa", "mobile", "wallet", "simu", "kapu", "mtn", "airtel", "efunze"},
+	"compliance":  {"compliance", "uzingatiaji", "ufuatiliaji", "okukuuma", "amateeka"},
+	"audit":       {"audit", "ukaguzi", "hesabu", "okusomesa", "okukebera"},
+	"committee":   {"committee", "board", "kamati", "bodi", "ekibiina", "obukiiko"},
+	"week":        {"week", "weekly", "wiki", "sabbiiti"},
+	"month":       {"month", "monthly", "mwezi", "omwezi"},
+	"today":       {"today", "leo", "leero"},
+	"draft":       {"draft", "write", "andika", "tayarisha", "andaa", "wandiika", "tegeka"},
+	"explain":     {"explain", "why", "eleza", "kwanini", "nini", "tegeeza", "lwaki"},
+	"scan":        {"scan", "check", "flag", "chunguza", "kagua", "angalia", "onyesha", "kebera", "laba"},
+	"summary":     {"summary", "overview", "muhtasari", "jumla", "obugumba", "okubikka"},
 }
 
 // reverse index built once at init: surface form -> concept.
@@ -221,6 +237,9 @@ var stopwords = map[string]bool{
 	"na": true, "ya": true, "wa": true, "za": true, "la": true, "kwa": true,
 	"ni": true, "katika": true, "hii": true, "hiyo": true, "au": true,
 	"tafadhali": true, "yangu": true, "zote": true, "kama": true,
+	// Luganda stopwords
+	"ne": true, "nga": true, "mu": true, "ku": true, "oba": true, "era": true,
+	"nti": true, "eri": true, "bw": true, "kw": true, "gw": true,
 }
 
 // Tokenize lowercases, splits on non-alphanumerics, and drops stopwords and
@@ -245,7 +264,7 @@ func Tokenize(text string) []string {
 // toward English on a tie because English is the fallback for every catalog key.
 func DetectLang(text string) Lang {
 	toks := Tokenize(text)
-	var sw, en int
+	var sw, en, lg int
 	for _, t := range toks {
 		if swMarkers[t] {
 			sw++
@@ -253,6 +272,12 @@ func DetectLang(text string) Lang {
 		if enMarkers[t] {
 			en++
 		}
+		if lgMarkers[t] {
+			lg++
+		}
+	}
+	if lg > en && lg > sw {
+		return LG
 	}
 	if sw > en {
 		return SW
@@ -273,6 +298,16 @@ var enMarkers = buildMarkers([]string{
 	"report", "compliance", "explain", "why", "threshold", "deposit", "deposits",
 	"week", "month", "today", "committee", "summary", "structuring", "laundering",
 	"dormant", "cross", "border", "check", "scan", "show", "note", "risk",
+})
+
+// lgMarkers contains Luganda-specific tokens for language detection.
+// Luganda is spoken by ~16M people in the Buganda region of Uganda.
+var lgMarkers = buildMarkers([]string{
+	"obutunzi", "teereka", "sente", "ensimbi", "akawunti", "mupolisi", "bapolisi",
+	"okugabanya", "okukuuma", "amateeka", "kebera", "ekibiina", "sabbiiti",
+	"omwezi", "leero", "wandiika", "tegeka", "tegeeza", "lwaki", "laba",
+	"ppapula", "ensobi", "obucwezi", "omugereka", "okwoza", "mtn", "airtel",
+	"gavumenti", "omukulembeze", "efunze", "omwoyo",
 })
 
 func buildMarkers(words []string) map[string]bool {

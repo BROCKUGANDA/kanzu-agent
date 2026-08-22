@@ -44,8 +44,9 @@ inahitajika.
 
 Ufuatiliaji hulinganisha shughuli na kile kinachotarajiwa kwa mwanachama huyo.
 Kipimo ni mtindo wa mwanachama mwenyewe na lengo alilotaja, si wastani wa taasisi
-yote. Mfanyabiashara wa sokoni anayeweka laki tatu kwa wiki ni kawaida; kiasi hicho
-kutoka mwanachama ambaye akaunti yake ya mshahara haijazidi elfu ishirini si kawaida.
+yote. Mfanyabiashara wa sokoni anayeweka milioni tatu kwa wiki ni kawaida; kiasi hicho
+kutoka mwanachama ambaye akaunti yake ya mshahara haijazidi laki tano si kawaida.
+Sarafu inayotumika ni shilingi ya Uganda (UGX).
 
 Muamala usio wa kawaida si lazima uwe wa kutiliwa shaka. Wajibu ni kuchunguza chanzo
 na lengo lake, kuandika kile uchunguzi ulikuta, na kupandisha suala hilo tu kama
@@ -56,14 +57,15 @@ kuandika uamuzi wa kupandisha.
 
 Pendekezo la ishirini linahitaji kwamba taasisi inaposhuku, au ina misingi ya
 kuaminika ya kushuku, kwamba fedha ni mapato ya uhalifu au yanahusiana na ufadhili
-wa ugaidi, iripoti mara moja kwa kituo cha kitaifa cha ujasusi wa kifedha. Kipimo ni
-shaka, ambayo ni chini ya uthibitisho, na taasisi hailazimiki kutambua kosa la
-msingi lililotendeka.
+wa ugaidi, iripoti mara moja kwa Mamlaka ya Ujasusi wa Fedha (Financial Intelligence
+Authority — FIA) ya Uganda. Kipimo ni shaka, ambayo ni chini ya uthibitisho, na
+taasisi hailazimiki kutambua kosa la msingi lililotendeka.
 
 Kanuni mbili zinafuata na mara nyingi hazitekelezwi vizuri. Kuripoti kunalindwa:
 taasisi na wafanyakazi wake wanaotenda kwa nia nzuri wanalindwa dhidi ya dhima ya
 kufichua. Kuripoti ni siri: kumweleza mwanachama kwamba ripoti imetolewa au
-inaweza kutolewa ni kosa la kipekee katika maeneo mengi.
+inaweza kutolewa ni kosa la kipekee chini ya Sheria ya Kuzuia Utakatishaji wa Fedha
+(AMLA, 2013) ya Uganda.
 
 Tofauti na kuripoti kwa msingi wa shaka, maeneo mengi yanahitaji ripoti kwa miamala
 ya fedha taslimu inayozidi kiwango kilichowekwa, bila kujali shaka. Kiwango hicho
@@ -85,8 +87,9 @@ mwendo, pamoja na sababu za uamuzi wowote wa kupandisha suala.
 
 ## Utawala na afisa wa uzingatiaji
 
-Taasisi lazima imteue afisa wa uzingatiaji katika ngazi ya uongozi mwenye jukumu la
-mpango wa kuzuia utakatishaji wa fedha, itoe mafunzo endelevu kwa wafanyakazi, na
-iwe na ukaguzi huru wa kupima mpango huo. Katika chama kidogo majukumu haya mara
-nyingi yanashikiliwa na watu wachache sana, hali inayofanya utaratibu ulioandikwa na
-kumbukumbu ya ukaguzi isiyoweza kubadilishwa kuwa muhimu zaidi, si kidogo.
+Taasisi lazima imteue afisa wa uzingatiaji wa kuzuia utakatishaji wa fedha katika
+ngazi ya uongozi mwenye jukumu la mpango wa kuzuia utakatishaji wa fedha, itoe
+mafunzo endelevu kwa wafanyakazi, na iwe na ukaguzi huru wa kupima mpango huo.
+Katika chama kidogo majukumu haya mara nyingi yanashikiliwa na watu wachache sana,
+hali inayofanya utaratibu ulioandikwa na kumbukumbu ya ukaguzi isiyoweza kubadilishwa
+kuwa muhimu zaidi, si kidogo.

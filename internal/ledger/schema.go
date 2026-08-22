@@ -40,7 +40,7 @@ CREATE TABLE IF NOT EXISTS accounts (
     member_id     TEXT NOT NULL REFERENCES members(id),
     kind          TEXT NOT NULL,                  -- savings | share | loan | wallet
     opened_at     TEXT NOT NULL,
-    currency      TEXT NOT NULL DEFAULT 'KES',
+    currency      TEXT NOT NULL DEFAULT 'UGX',
     balance_minor INTEGER NOT NULL DEFAULT 0
 );
 CREATE INDEX IF NOT EXISTS idx_accounts_member ON accounts(member_id);
@@ -53,7 +53,7 @@ CREATE TABLE IF NOT EXISTS transactions (
     direction           TEXT NOT NULL,            -- credit | debit
     channel             TEXT NOT NULL,            -- cash | mobile | transfer | cheque | agent
     amount_minor        INTEGER NOT NULL,
-    currency            TEXT NOT NULL DEFAULT 'KES',
+    currency            TEXT NOT NULL DEFAULT 'UGX',
     counterparty        TEXT,
     counterparty_country TEXT,                    -- ISO-3166 alpha-2
     narrative           TEXT,
@@ -164,9 +164,9 @@ CREATE TABLE IF NOT EXISTS kb_meta (
 var defaultPolicy = []struct {
 	Key, Value, Unit, Description string
 }{
-	{"currency", "KES", "", "Reporting currency for this institution."},
-	{"internal_report_threshold_minor", "100000000", "minor units",
-		"Internal single-transaction escalation threshold (KES 1,000,000). Set by the SACCO board; not a statutory figure."},
+	{"currency", "UGX", "", "Reporting currency for this institution."},
+	{"internal_report_threshold_minor", "2800000000", "minor units",
+		"Internal single-transaction escalation threshold (UGX 28,000,000). Set by the SACCO board; not a statutory figure."},
 	{"structuring_window_hours", "72", "hours",
 		"Look-back window for aggregating deposits when testing for structuring."},
 	{"structuring_min_txns", "3", "count",
@@ -182,7 +182,7 @@ var defaultPolicy = []struct {
 	{"round_amount_min_repeats", "3", "count",
 		"Repeats of an identical round figure before the round-amount rule fires."},
 	{"round_amount_modulus_minor", "1000000", "minor units",
-		"An amount is 'round' when divisible by this (KES 10,000)."},
+		"An amount is 'round' when divisible by this (UGX 10,000)."},
 	{"dormancy_days", "180", "days",
 		"Days of inactivity after which an account is treated as dormant."},
 	{"dormant_reactivation_pct", "50", "percent",
@@ -191,8 +191,8 @@ var defaultPolicy = []struct {
 		"Window for detecting funds arriving and leaving again (layering)."},
 	{"passthrough_ratio_pct", "80", "percent",
 		"Outflow as a percentage of recent inflow that constitutes a pass-through."},
-	{"kyc_tier1_limit_minor", "20000000", "minor units",
-		"Cumulative value a basic-KYC member may transact per velocity window (KES 200,000)."},
+	{"kyc_tier1_limit_minor", "560000000", "minor units",
+		"Cumulative value a basic-KYC member may transact per velocity window (UGX 5,600,000)."},
 	{"high_risk_countries", "IR,KP,MM,SS,SY,YE,AF,LY",
 		"ISO-3166 alpha-2",
 		"Institution watchlist for enhanced due diligence. Review against the current FATF public statements each quarter."},

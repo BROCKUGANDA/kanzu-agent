@@ -1,0 +1,1054 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kanzu Agent — Compliance Chat</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --navy:      #0d1b3e;
+    --navy-mid:  #162650;
+    --navy-lite: #1e3266;
+    --green:     #1a6b3a;
+    --green-dim: #145430;
+    --gold:      #c9a227;
+    --cyan:      #00b4d8;
+    --cyan-dim:  #0096b8;
+    --surface:   #f5f6fa;
+    --card:      #ffffff;
+    --border:    #dde1ea;
+    --text:      #111827;
+    --muted:     #6b7280;
+    --agent-bg:  #eef3ff;
+    --user-bg:   #0d1b3e;
+    --user-text: #ffffff;
+    --high:      #dc2626;
+    --med:       #d97706;
+    --low:       #16a34a;
+    --radius:    14px;
+    --radius-sm: 8px;
+  }
+
+  html, body {
+    height: 100%;
+    font-family: -apple-system, "Segoe UI", system-ui, sans-serif;
+    background: var(--surface);
+    color: var(--text);
+    font-size: 14px;
+    line-height: 1.55;
+  }
+
+  /* ── layout ── */
+  .shell {
+    display: flex;
+    height: 100vh;
+    max-width: 1140px;
+    margin: 0 auto;
+    background: var(--card);
+    box-shadow: 0 0 0 1px var(--border);
+  }
+
+  /* ── sidebar ── */
+  .sidebar {
+    width: 238px;
+    flex-shrink: 0;
+    background: var(--navy);
+    display: flex;
+    flex-direction: column;
+    border-right: 1px solid var(--navy-lite);
+  }
+
+  .sidebar-brand {
+    padding: 20px 18px 14px;
+    border-bottom: 1px solid var(--navy-lite);
+    display: flex;
+    align-items: center;
+    gap: 11px;
+  }
+
+  .logo-mark {
+    flex-shrink: 0;
+    width: 36px;
+    height: 42px;
+  }
+
+  .brand-text {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.15;
+  }
+  .brand-text strong {
+    color: #ffffff;
+    font-size: 15px;
+    letter-spacing: 0.05em;
+    font-weight: 800;
+  }
+  .brand-text span {
+    color: var(--gold);
+    font-size: 9.5px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    font-weight: 600;
+  }
+
+  .sidebar-section {
+    padding: 14px 12px 6px;
+  }
+  .sidebar-label {
+    font-size: 9.5px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.3);
+    padding: 0 6px 7px;
+    font-weight: 600;
+  }
+
+  .nav-item {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    padding: 8px 10px;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    color: rgba(255,255,255,0.55);
+    font-size: 13px;
+    transition: background 0.12s, color 0.12s;
+    position: relative;
+    user-select: none;
+  }
+  .nav-item:hover { background: rgba(255,255,255,0.07); color: #fff; }
+  .nav-item.active { background: rgba(0,180,216,0.14); color: var(--cyan); }
+  .nav-item.active::before {
+    content: '';
+    position: absolute;
+    left: 0; top: 4px; bottom: 4px;
+    width: 3px;
+    background: var(--cyan);
+    border-radius: 2px;
+  }
+  .nav-icon { width: 17px; text-align: center; font-size: 13px; }
+
+  .badge {
+    margin-left: auto;
+    background: var(--high);
+    color: #fff;
+    font-size: 10px;
+    font-weight: 700;
+    border-radius: 10px;
+    padding: 1px 6px;
+    min-width: 18px;
+    text-align: center;
+  }
+  .badge.green { background: var(--green); }
+
+  .sidebar-footer {
+    margin-top: auto;
+    padding: 14px 16px;
+    border-top: 1px solid var(--navy-lite);
+  }
+
+  .lang-switcher {
+    display: flex;
+    gap: 5px;
+    margin-bottom: 11px;
+  }
+  .lang-btn {
+    flex: 1;
+    padding: 5px 0;
+    border: 1px solid rgba(255,255,255,0.15);
+    background: transparent;
+    border-radius: 7px;
+    color: rgba(255,255,255,0.45);
+    font-size: 11px;
+    font-weight: 700;
+    cursor: pointer;
+    letter-spacing: 0.07em;
+    transition: all 0.12s;
+  }
+  .lang-btn.active {
+    background: var(--cyan);
+    border-color: var(--cyan);
+    color: var(--navy);
+  }
+  .lang-btn:not(.active):hover {
+    border-color: rgba(255,255,255,0.35);
+    color: rgba(255,255,255,0.8);
+  }
+
+  .offline-pill {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    color: rgba(255,255,255,0.38);
+  }
+  .offline-dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--low);
+    flex-shrink: 0;
+    box-shadow: 0 0 0 2px rgba(22,163,74,0.22);
+  }
+
+  /* ── main ── */
+  .main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+
+  /* ── topbar ── */
+  .topbar {
+    display: flex;
+    align-items: center;
+    padding: 0 20px;
+    height: 56px;
+    border-bottom: 1px solid var(--border);
+    gap: 12px;
+    flex-shrink: 0;
+    background: var(--card);
+  }
+  .topbar-info { flex: 1; min-width: 0; }
+  .topbar-title {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--navy);
+  }
+  .topbar-sub { font-size: 11.5px; color: var(--muted); }
+
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 9px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+    border: 1px solid currentColor;
+    white-space: nowrap;
+  }
+  .chip-offline { color: var(--low); border-color: rgba(22,163,74,0.3); background: rgba(22,163,74,0.06); }
+  .chip-model { color: var(--muted); border-color: var(--border); background: #f9fafb; }
+
+  /* ── messages ── */
+  .messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 22px 22px;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    scroll-behavior: smooth;
+  }
+  .messages::-webkit-scrollbar { width: 4px; }
+  .messages::-webkit-scrollbar-track { background: transparent; }
+  .messages::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+  .date-divider {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: var(--muted);
+    font-size: 11px;
+    font-weight: 500;
+  }
+  .date-divider::before, .date-divider::after {
+    content: ''; flex: 1; height: 1px; background: var(--border);
+  }
+
+  .msg-row {
+    display: flex;
+    gap: 10px;
+    max-width: 100%;
+    align-items: flex-start;
+  }
+  .msg-row.user { flex-direction: row-reverse; }
+
+  .avatar {
+    width: 30px; height: 30px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 700;
+    margin-top: 20px;
+  }
+  .avatar.agent { background: var(--navy); color: var(--cyan); font-size: 14px; }
+  .avatar.user {
+    background: linear-gradient(135deg, var(--green) 0%, var(--navy) 100%);
+    color: #fff;
+    font-size: 11px;
+  }
+
+  .bubble-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    min-width: 0;
+    max-width: min(76%, 720px);
+  }
+  .msg-row.user .bubble-wrap { align-items: flex-end; }
+
+  .bubble-meta {
+    font-size: 10.5px;
+    color: var(--muted);
+    padding: 0 4px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .bubble-meta .name { font-weight: 600; color: var(--navy); }
+
+  .bubble {
+    padding: 12px 15px;
+    border-radius: var(--radius);
+    font-size: 13.5px;
+    line-height: 1.6;
+    word-break: break-word;
+  }
+  .bubble.agent {
+    background: var(--agent-bg);
+    border-top-left-radius: 3px;
+    border: 1px solid rgba(13,27,62,0.07);
+    color: var(--text);
+  }
+  .bubble.user {
+    background: var(--user-bg);
+    border-top-right-radius: 3px;
+    color: var(--user-text);
+  }
+
+  /* ── plan block ── */
+  .plan-block {
+    margin-top: 10px;
+    background: rgba(13,27,62,0.04);
+    border-radius: 9px;
+    padding: 10px 13px;
+    border: 1px solid rgba(13,27,62,0.07);
+  }
+  .block-label {
+    font-size: 9.5px;
+    letter-spacing: 0.11em;
+    text-transform: uppercase;
+    font-weight: 700;
+    color: var(--muted);
+    margin-bottom: 7px;
+  }
+  .plan-step {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 5px 0;
+    font-size: 12.5px;
+    color: #374151;
+  }
+  .plan-step + .plan-step { border-top: 1px solid rgba(13,27,62,0.05); }
+  .step-num {
+    width: 19px; height: 19px;
+    border-radius: 50%;
+    background: var(--navy);
+    color: #fff;
+    font-size: 10px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+  .step-tool {
+    font-family: "SF Mono", "Consolas", monospace;
+    font-size: 11.5px;
+    color: var(--cyan-dim);
+    font-weight: 600;
+  }
+  .step-why { color: var(--muted); font-size: 12px; }
+
+  /* ── evidence ── */
+  .evidence-block {
+    margin-top: 11px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .ledger-summary {
+    font-size: 12px;
+    color: var(--muted);
+    margin-bottom: 4px;
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  .ledger-stat strong { color: var(--navy); }
+
+  .finding-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    padding: 9px 12px;
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 5px 10px;
+    align-items: start;
+    font-size: 12.5px;
+  }
+  .finding-card.sev-high { border-left: 3px solid var(--high); }
+  .finding-card.sev-med  { border-left: 3px solid var(--med); }
+  .finding-card.sev-low  { border-left: 3px solid var(--low); }
+
+  .sev-badge {
+    padding: 2px 7px;
+    border-radius: 4px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    white-space: nowrap;
+    align-self: center;
+  }
+  .sev-badge.high { background: #fef2f2; color: var(--high); }
+  .sev-badge.med  { background: #fffbeb; color: var(--med); }
+  .sev-badge.low  { background: #f0fdf4; color: var(--low); }
+
+  .finding-rule { font-weight: 600; color: var(--navy); font-size: 12.5px; }
+  .finding-member { grid-column: 2; color: var(--muted); font-size: 11.5px; }
+  .finding-desc {
+    grid-column: 1 / -1;
+    color: #374151;
+    font-size: 12px;
+    line-height: 1.5;
+  }
+  .finding-ids {
+    grid-column: 1 / -1;
+    font-family: "SF Mono", "Consolas", monospace;
+    font-size: 10.5px;
+    color: var(--muted);
+  }
+
+  /* ── narrative ── */
+  .narrative {
+    margin-top: 11px;
+    padding-top: 10px;
+    border-top: 1px solid rgba(13,27,62,0.08);
+    font-size: 13px;
+    color: #1f2937;
+    line-height: 1.65;
+  }
+  .narrative p + p { margin-top: 7px; }
+
+  /* ── sources ── */
+  .sources-block {
+    margin-top: 9px;
+    padding-top: 8px;
+    border-top: 1px solid rgba(13,27,62,0.07);
+  }
+  .source-line {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+    font-size: 11.5px;
+    color: var(--muted);
+    margin-top: 3px;
+  }
+  .source-dot { color: var(--gold); font-size: 15px; line-height: 1; flex-shrink: 0; }
+
+  /* ── perf strip ── */
+  .perf-strip {
+    display: flex;
+    gap: 18px;
+    flex-wrap: wrap;
+    margin-top: 9px;
+    padding-top: 9px;
+    border-top: 1px solid rgba(13,27,62,0.07);
+  }
+  .perf-item { display: flex; flex-direction: column; gap: 1px; }
+  .perf-key {
+    font-size: 9.5px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--muted);
+    font-weight: 600;
+  }
+  .perf-val {
+    font-size: 12px;
+    font-family: "SF Mono", "Consolas", monospace;
+    color: var(--navy);
+    font-weight: 600;
+  }
+
+  /* ── thinking indicator ── */
+  .thinking-row {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    color: var(--muted);
+    font-size: 12.5px;
+    font-style: italic;
+  }
+  .dot-pulse { display: flex; gap: 4px; align-items: center; }
+  .dot-pulse span {
+    width: 5px; height: 5px;
+    border-radius: 50%;
+    background: var(--navy);
+    opacity: 0.3;
+    animation: dp 1.2s ease-in-out infinite;
+  }
+  .dot-pulse span:nth-child(2) { animation-delay: 0.2s; }
+  .dot-pulse span:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes dp {
+    0%, 80%, 100% { opacity: 0.2; transform: scale(0.85); }
+    40% { opacity: 1; transform: scale(1); }
+  }
+
+  /* ── input area ── */
+  .input-area {
+    border-top: 1px solid var(--border);
+    padding: 13px 18px 15px;
+    background: var(--card);
+    flex-shrink: 0;
+  }
+
+  .command-hints {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-bottom: 9px;
+  }
+  .hint-chip {
+    padding: 3px 10px;
+    border-radius: 14px;
+    font-size: 11.5px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--muted);
+    cursor: pointer;
+    transition: all 0.12s;
+    font-weight: 500;
+    user-select: none;
+  }
+  .hint-chip:hover {
+    background: var(--agent-bg);
+    border-color: rgba(13,27,62,0.2);
+    color: var(--navy);
+  }
+
+  .input-row {
+    display: flex;
+    gap: 10px;
+    align-items: flex-end;
+  }
+  .input-box {
+    flex: 1;
+    min-height: 44px;
+    max-height: 120px;
+    padding: 11px 14px;
+    border: 1.5px solid var(--border);
+    border-radius: 12px;
+    font-size: 13.5px;
+    font-family: inherit;
+    resize: none;
+    outline: none;
+    background: var(--surface);
+    color: var(--text);
+    transition: border-color 0.15s, background 0.15s;
+    line-height: 1.5;
+    overflow-y: auto;
+  }
+  .input-box:focus { border-color: var(--navy-lite); background: #fff; }
+  .input-box::placeholder { color: var(--muted); }
+
+  .send-btn {
+    width: 44px; height: 44px;
+    border-radius: 12px;
+    border: none;
+    background: var(--navy);
+    color: #fff;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.12s, transform 0.08s;
+    flex-shrink: 0;
+  }
+  .send-btn:hover { background: var(--navy-lite); }
+  .send-btn:active { transform: scale(0.92); }
+
+  .input-footer {
+    margin-top: 7px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .input-hint { font-size: 11px; color: var(--muted); }
+  .input-hint kbd {
+    display: inline-block;
+    padding: 0px 5px;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    font-size: 10px;
+    font-family: inherit;
+    background: var(--surface);
+    color: var(--text);
+  }
+  .char-count { font-size: 11px; color: var(--muted); }
+  .char-count.warn { color: var(--high); }
+</style>
+</head>
+<body>
+<div class="shell">
+
+  <!-- ────── Sidebar ────── -->
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <!-- Hand-traced logo mark: shield + robot matching the Kanzu Agent brand image -->
+      <svg class="logo-mark" viewBox="0 0 36 43" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M18 1.5L34.5 7.5V22.5C34.5 31.5 27 38.5 18 42C9 38.5 1.5 31.5 1.5 22.5V7.5Z" fill="#1a6b3a" stroke="#145430" stroke-width="0.6"/>
+        <path d="M18 4.5L31.5 9.5V22.5C31.5 30 25 36 18 39C11 36 4.5 30 4.5 22.5V9.5Z" fill="#0d1b3e"/>
+        <!-- Gold checkmark -->
+        <path d="M18 34L9.5 26.5L12.5 23.5L18 29L23.5 23.5L26.5 26.5Z" fill="#c9a227"/>
+        <!-- White ribbon/knot -->
+        <path d="M10.5 22.5C10.5 20.5 12.5 19.5 14.5 20.5L18 22.5L21.5 20.5C23.5 19.5 25.5 20.5 25.5 22.5C25.5 24.5 23.5 25.5 21.5 24.5L18 26.5L14.5 24.5C12.5 25.5 10.5 24.5 10.5 22.5Z" fill="rgba(255,255,255,0.88)"/>
+        <!-- Robot head -->
+        <rect x="13" y="10" width="10" height="8.5" rx="2.5" fill="#0d1b3e"/>
+        <rect x="13" y="10" width="10" height="8.5" rx="2.5" stroke="#00b4d8" stroke-width="1.1"/>
+        <!-- Antenna -->
+        <line x1="18" y1="10" x2="18" y2="7" stroke="#c9a227" stroke-width="1.3" stroke-linecap="round"/>
+        <circle cx="18" cy="6.5" r="1.3" fill="#c9a227"/>
+        <!-- Eyes -->
+        <path d="M15.3 14.8 Q16.1 13.7 16.9 14.8" stroke="#00b4d8" stroke-width="1.2" stroke-linecap="round" fill="none"/>
+        <path d="M19.1 14.8 Q19.9 13.7 20.7 14.8" stroke="#00b4d8" stroke-width="1.2" stroke-linecap="round" fill="none"/>
+        <!-- Ear handles -->
+        <rect x="10.5" y="12.5" width="2.6" height="3.5" rx="1.1" fill="#c9a227"/>
+        <rect x="22.9" y="12.5" width="2.6" height="3.5" rx="1.1" fill="#c9a227"/>
+        <!-- Sparkle -->
+        <path d="M18 2.2L18.5 3.6H20L18.9 4.5L19.3 6L18 5.1L16.7 6L17.1 4.5L16 3.6H17.5Z" fill="#c9a227"/>
+        <!-- Cyan sparkle rays -->
+        <line x1="18" y1="1.5" x2="18" y2="0.2" stroke="#00b4d8" stroke-width="1.2" stroke-linecap="round"/>
+        <line x1="20.2" y1="2.2" x2="21.2" y2="1.3" stroke="#00b4d8" stroke-width="1.2" stroke-linecap="round"/>
+        <line x1="15.8" y1="2.2" x2="14.8" y2="1.3" stroke="#00b4d8" stroke-width="1.2" stroke-linecap="round"/>
+      </svg>
+
+      <div class="brand-text">
+        <strong>KANZU</strong>
+        <span>AGENT</span>
+      </div>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-label">Workspace</div>
+      <div class="nav-item active">
+        <span class="nav-icon">💬</span> Compliance Chat
+      </div>
+      <div class="nav-item">
+        <span class="nav-icon">⚡</span> Quick Scan
+        <span class="badge">12</span>
+      </div>
+      <div class="nav-item">
+        <span class="nav-icon">📋</span> Reports
+      </div>
+      <div class="nav-item">
+        <span class="nav-icon">👥</span> Members
+      </div>
+    </div>
+
+    <div class="sidebar-section" style="margin-top:8px">
+      <div class="sidebar-label">Tools</div>
+      <div class="nav-item">
+        <span class="nav-icon">📥</span> Inbox Queue
+        <span class="badge green">3</span>
+      </div>
+      <div class="nav-item">
+        <span class="nav-icon">🔍</span> Knowledge Base
+      </div>
+      <div class="nav-item">
+        <span class="nav-icon">⚙️</span> Policy Settings
+      </div>
+      <div class="nav-item">
+        <span class="nav-icon">🩺</span> Doctor Check
+      </div>
+    </div>
+
+    <div class="sidebar-footer">
+      <div class="lang-switcher">
+        <button class="lang-btn active" data-lang="en">EN</button>
+        <button class="lang-btn" data-lang="sw">SW</button>
+        <button class="lang-btn" data-lang="lg">LG</button>
+      </div>
+      <div class="offline-pill">
+        <div class="offline-dot"></div>
+        Fully offline &middot; 0 network calls
+      </div>
+    </div>
+  </aside>
+
+  <!-- ────── Main ────── -->
+  <main class="main">
+
+    <div class="topbar">
+      <div class="topbar-info">
+        <div class="topbar-title">Compliance Chat</div>
+        <div class="topbar-sub">Kampala Central SACCO &middot; Branch Officer</div>
+      </div>
+      <span class="chip chip-offline">&#9679; Offline</span>
+      <span class="chip chip-model">Qwen2.5-1.5B Q4_K_M</span>
+    </div>
+
+    <div class="messages" id="messages">
+
+      <div class="date-divider">Friday, 22 Aug 2026</div>
+
+      <!-- Welcome -->
+      <div class="msg-row">
+        <div class="avatar agent">&#129302;</div>
+        <div class="bubble-wrap">
+          <div class="bubble-meta"><span class="name">Kanzu Agent</span> 08:02</div>
+          <div class="bubble agent">
+            Hello. I'm your offline compliance assistant for Kampala Central SACCO.<br><br>
+            I can <strong>scan for suspicious transactions</strong>, <strong>draft SAR notes</strong> for the savings committee, <strong>explain AML obligations</strong> under Uganda's AMLA 2013, and <strong>profile member risk</strong> &mdash; all without a network connection.<br><br>
+            What would you like to review today?
+          </div>
+        </div>
+      </div>
+
+      <!-- User -->
+      <div class="msg-row user">
+        <div class="avatar user">BA</div>
+        <div class="bubble-wrap">
+          <div class="bubble-meta" style="justify-content:flex-end;"><span class="name">Branch Officer</span> 08:14</div>
+          <div class="bubble user">
+            Flag suspicious transactions from last week and draft a compliance note for the savings committee.
+          </div>
+        </div>
+      </div>
+
+      <!-- Thinking -->
+      <div class="msg-row">
+        <div class="avatar agent">&#129302;</div>
+        <div class="bubble-wrap">
+          <div class="bubble-meta"><span class="name">Kanzu Agent</span> 08:14</div>
+          <div class="bubble agent" style="padding:10px 15px;">
+            <div class="thinking-row">
+              <div class="dot-pulse"><span></span><span></span><span></span></div>
+              Working &mdash; deterministic checks first, then narration&hellip;
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Full agent response -->
+      <div class="msg-row">
+        <div class="avatar agent">&#129302;</div>
+        <div class="bubble-wrap" style="max-width:min(86%,760px)">
+          <div class="bubble-meta"><span class="name">Kanzu Agent</span> 08:15</div>
+          <div class="bubble agent">
+
+            <div class="plan-block">
+              <div class="block-label">Execution Plan &middot; intent=scan_suspicious &middot; origin=deterministic</div>
+              <div class="plan-step">
+                <div class="step-num">1</div>
+                <div><span class="step-tool">ledger.query</span> <span class="step-why">(start="2026-08-15", end="2026-08-22") &mdash; Load the weekly window from the local ledger.</span></div>
+              </div>
+              <div class="plan-step">
+                <div class="step-num">2</div>
+                <div><span class="step-tool">rules.scan</span> <span class="step-why">(rule_ids="ALL") &mdash; Deterministic detection across all 10 typologies. Every flag originates here, not from the model.</span></div>
+              </div>
+              <div class="plan-step">
+                <div class="step-num">3</div>
+                <div><span class="step-tool">kb.search</span> <span class="step-why">(lang="en", query="structuring velocity Uganda AMLA FIA reporting") &mdash; Attach the regulatory basis from the local knowledge base.</span></div>
+              </div>
+              <div class="plan-step">
+                <div class="step-num">4</div>
+                <div><span class="step-tool">report.draft</span> <span class="step-why">(template="SAR", lang="en") &mdash; Compose the suspicious-activity note for the committee.</span></div>
+              </div>
+            </div>
+
+            <div class="evidence-block">
+              <div class="block-label" style="margin-top:12px">Deterministic Evidence &middot; 2026-08-15 &rarr; 2026-08-22</div>
+              <div class="ledger-summary">
+                <span class="ledger-stat"><strong>25</strong> txns</span>
+                <span class="ledger-stat"><strong>9</strong> members</span>
+                <span class="ledger-stat">credits <strong>UGX 170,828,000</strong></span>
+                <span class="ledger-stat">debits <strong>UGX 22,085,000</strong></span>
+              </div>
+
+              <div class="finding-card sev-high">
+                <span class="sev-badge high">HIGH</span>
+                <span class="finding-rule">Transaction velocity spike</span>
+                <span class="finding-member">Aisha Nakibuka (M-001)</span>
+                <div class="finding-desc">Window value of UGX&nbsp;33,600,000 over 168&nbsp;hours is 14.9&times; the member's own trailing baseline of UGX&nbsp;2,255,000.</div>
+                <div class="finding-ids">rule=R02_VELOCITY &middot; txns=T-1005,T-1006,T-1007,T-1008,T-1009</div>
+              </div>
+
+              <div class="finding-card sev-high">
+                <span class="sev-badge high">HIGH</span>
+                <span class="finding-rule">Structuring (deposit splitting)</span>
+                <span class="finding-member">Aisha Nakibuka (M-001)</span>
+                <div class="finding-desc">5 transactions totalling UGX&nbsp;33,600,000 within 72&nbsp;hours; each individually below the UGX&nbsp;28,000,000 reporting threshold while the aggregate exceeds it.</div>
+                <div class="finding-ids">rule=R01_STRUCTURING &middot; txns=T-1005,T-1006,T-1007,T-1008,T-1009</div>
+              </div>
+
+              <div class="finding-card sev-high">
+                <span class="sev-badge high">HIGH</span>
+                <span class="finding-rule">Rapid pass-through of funds (layering)</span>
+                <span class="finding-member">Grace Amongin (M-003)</span>
+                <div class="finding-desc">87% of incoming value left the account again within 48&nbsp;hours (total UGX&nbsp;21,840,000).</div>
+                <div class="finding-ids">rule=R05_RAPID_PASSTHROUGH &middot; txns=T-1205,T-1206,T-1207</div>
+              </div>
+
+              <div class="finding-card sev-med">
+                <span class="sev-badge med">MED</span>
+                <span class="finding-rule">Agent-banking deposit concentration</span>
+                <span class="finding-member">Aisha Nakibuka (M-001)</span>
+                <div class="finding-desc">A single MTN&nbsp;MoMo agent accounts for 100% of this member's deposits (UGX&nbsp;33,600,000 across 5&nbsp;transactions).</div>
+                <div class="finding-ids">rule=R10_AGENT_CONCENTRATION &middot; txns=T-1005,T-1006,T-1007,T-1008,T-1009</div>
+              </div>
+
+              <div class="finding-card sev-med">
+                <span class="sev-badge med">MED</span>
+                <span class="finding-rule">Dormant account reactivation</span>
+                <span class="finding-member">Robert Ochen (M-002)</span>
+                <div class="finding-desc">Account was inactive for 293&nbsp;days, then recorded 2&nbsp;transactions totalling UGX&nbsp;21,000,000.</div>
+                <div class="finding-ids">rule=R04_DORMANT_REACTIVATION &middot; txns=T-1102,T-1103</div>
+              </div>
+            </div>
+
+            <div class="narrative">
+              <p><strong>SUMMARY.</strong> The weekly scan identified five high-priority findings across two members. Aisha Nakibuka (M-001) exhibits co-occurring structuring and velocity indicators &mdash; five deposits of UGX&nbsp;6,720,000 each, totalling UGX&nbsp;33,600,000, all routed through a single MTN&nbsp;MoMo agent within 72&nbsp;hours. Robert Ochen (M-002) reactivated a dormant account (293&nbsp;days inactive) with two large credits totalling UGX&nbsp;21,000,000.</p>
+              <p><strong>OBLIGATION.</strong> Under Uganda's Anti-Money Laundering Act 2013 §18, a SACCO must file a Suspicious Activity Report with the Financial Intelligence Authority (FIA) within 24&nbsp;hours of forming reasonable grounds that a transaction is linked to money laundering or terrorist financing.</p>
+              <p><strong>ACTIONS.</strong> (1)&nbsp;Freeze further high-value transactions for M-001 pending KYC&nbsp;upgrade to Tier&nbsp;2. (2)&nbsp;Request source-of-funds documentation for both members before the next committee meeting. (3)&nbsp;File SAR to FIA (<em>fia.go.ug</em>) for M-001 &mdash; structuring pattern confirmed by R01 + R02 co-occurrence.</p>
+            </div>
+
+            <div class="sources-block">
+              <div class="block-label">Sources (local knowledge base)</div>
+              <div class="source-line"><span class="source-dot">&middot;</span>FATF Guidance on AML/CFT and Financial Inclusion; Recommendations R.12, R.16</div>
+              <div class="source-line"><span class="source-dot">&middot;</span>Uganda Anti-Money Laundering Act 2013 &mdash; &sect;18 suspicious transaction reporting</div>
+              <div class="source-line"><span class="source-dot">&middot;</span>UMRA SACCO Supervision Guidelines 2022 &mdash; KYC tiers &amp; UGX thresholds</div>
+            </div>
+
+            <div class="perf-strip">
+              <div class="perf-item"><div class="perf-key">Inference</div><div class="perf-val">21.4 tok/s</div></div>
+              <div class="perf-item"><div class="perf-key">Prompt</div><div class="perf-val">487 tok</div></div>
+              <div class="perf-item"><div class="perf-key">Generated</div><div class="perf-val">312 tok</div></div>
+              <div class="perf-item"><div class="perf-key">Wall time</div><div class="perf-val">18.3 s</div></div>
+              <div class="perf-item"><div class="perf-key">Thermal</div><div class="perf-val">no sensor</div></div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+
+      <!-- Kiswahili follow-up -->
+      <div class="msg-row user">
+        <div class="avatar user">BA</div>
+        <div class="bubble-wrap">
+          <div class="bubble-meta" style="justify-content:flex-end;"><span class="name">Branch Officer</span> 08:22</div>
+          <div class="bubble user">Chunguza miamala ya Aisha Nakibuka kwa undani zaidi.</div>
+        </div>
+      </div>
+
+      <div class="msg-row">
+        <div class="avatar agent">&#129302;</div>
+        <div class="bubble-wrap" style="max-width:min(86%,760px)">
+          <div class="bubble-meta">
+            <span class="name">Kanzu Agent</span>
+            <span style="font-size:10px;padding:1px 6px;background:rgba(0,180,216,0.1);color:var(--cyan-dim);border-radius:4px;font-weight:700;">SW</span>
+            08:23
+          </div>
+          <div class="bubble agent">
+            <div class="evidence-block">
+              <div class="block-label">Wasifu wa Mwanachama &middot; M-001 &middot; Aisha Nakibuka</div>
+              <div class="ledger-summary">
+                <span class="ledger-stat">KYC <strong>Tier 1</strong></span>
+                <span class="ledger-stat">Hatari <strong>Kubwa</strong></span>
+                <span class="ledger-stat">PEP <strong>Hapana</strong></span>
+                <span class="ledger-stat">Tawi <strong>Kampala Central</strong></span>
+              </div>
+              <div class="finding-card sev-high">
+                <span class="sev-badge high">KUBWA</span>
+                <span class="finding-rule">Kugawanya miamala (structuring)</span>
+                <span class="finding-member">Jumla: UGX 33,600,000 &middot; Miamala 5</span>
+                <div class="finding-desc">Miamala 5 ya jumla ya UGX&nbsp;33,600,000 katika saa 72; kila mmoja chini ya kikomo cha UGX&nbsp;28,000,000, lakini jumla imevuka kikomo.</div>
+              </div>
+            </div>
+            <div class="narrative" style="font-size:13px">
+              <p><strong>HALI.</strong> Mwanachama Aisha Nakibuka (M-001) ana kiwango cha utambulisho cha Tier&nbsp;1, ambacho kinamaanisha shughuli zaidi ya UGX&nbsp;5,600,000 kwa mwezi zinahitaji uchunguzi zaidi. Katika kipindi hiki, shughuli zake zinafika UGX&nbsp;33,600,000 &mdash; mara 6 zaidi ya ukomo wa Tier&nbsp;1.</p>
+              <p><strong>HATUA.</strong> (1)&nbsp;Omba nyaraka za utambulisho wa Tier&nbsp;2 kabla ya miamala mingine. (2)&nbsp;Thibitisha chanzo cha fedha kwa kila amana tano. (3)&nbsp;Toa taarifa kwa FIA ya Uganda ndani ya saa 24 &mdash; mtindo wa kugawanya miamala umethibitishwa.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Spacer so last message isn't flush with input -->
+      <div style="height:4px"></div>
+
+    </div><!-- /messages -->
+
+    <!-- Input area -->
+    <div class="input-area">
+      <div class="command-hints" id="hints">
+        <div class="hint-chip">Flag suspicious transactions this week</div>
+        <div class="hint-chip">Draft SAR for committee</div>
+        <div class="hint-chip">Profile member Ochen</div>
+        <div class="hint-chip">Explain structuring rule</div>
+        <div class="hint-chip">:scan -days 30</div>
+        <div class="hint-chip">:lang sw</div>
+        <div class="hint-chip">:lang lg</div>
+      </div>
+      <div class="input-row">
+        <textarea
+          class="input-box"
+          id="inputBox"
+          rows="1"
+          placeholder="Ask anything — or type :help for commands. Runs 100% offline."
+        ></textarea>
+        <button class="send-btn" id="sendBtn" title="Send (Enter)">
+          <svg width="17" height="17" viewBox="0 0 20 20" fill="none">
+            <path d="M17.5 10L2.5 3.5L5.5 10L2.5 16.5L17.5 10Z" fill="white"/>
+          </svg>
+        </button>
+      </div>
+      <div class="input-footer">
+        <div class="input-hint">
+          <kbd>Enter</kbd> send &nbsp;&middot;&nbsp;
+          <kbd>Shift+Enter</kbd> newline &nbsp;&middot;&nbsp;
+          <kbd>:lang en|sw|lg</kbd> switch language
+        </div>
+        <div class="char-count" id="charCount">0&nbsp;/&nbsp;500</div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  /* ── Textarea auto-grow ── */
+  var box = document.getElementById('inputBox');
+  var count = document.getElementById('charCount');
+
+  function updateInput() {
+    box.style.height = 'auto';
+    box.style.height = Math.min(box.scrollHeight, 120) + 'px';
+    var n = box.value.length;
+    count.textContent = n + '\u00a0/\u00a050\u00a000';
+    // Use plain character count display
+    count.textContent = n + ' / 500';
+    count.className = 'char-count' + (n > 450 ? ' warn' : '');
+  }
+
+  box.addEventListener('input', updateInput);
+
+  box.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      submit();
+    }
+  });
+
+  document.getElementById('sendBtn').addEventListener('click', submit);
+
+  function submit() {
+    var text = box.value.trim();
+    if (!text) return;
+    appendUserMsg(text);
+    box.value = '';
+    updateInput();
+    scrollBottom();
+    // Demo: append a canned thinking indicator
+    setTimeout(function () { appendThinking(); scrollBottom(); }, 200);
+  }
+
+  function appendUserMsg(text) {
+    var row = document.createElement('div');
+    row.className = 'msg-row user';
+    row.innerHTML =
+      '<div class="avatar user">BA</div>' +
+      '<div class="bubble-wrap">' +
+        '<div class="bubble-meta" style="justify-content:flex-end"><span class="name">Branch Officer</span> ' + nowTime() + '</div>' +
+        '<div class="bubble user">' + esc(text) + '</div>' +
+      '</div>';
+    document.getElementById('messages').appendChild(row);
+  }
+
+  function appendThinking() {
+    var row = document.createElement('div');
+    row.className = 'msg-row';
+    row.id = 'thinking-row';
+    row.innerHTML =
+      '<div class="avatar agent">&#129302;</div>' +
+      '<div class="bubble-wrap">' +
+        '<div class="bubble-meta"><span class="name">Kanzu Agent</span> ' + nowTime() + '</div>' +
+        '<div class="bubble agent" style="padding:10px 15px">' +
+          '<div class="thinking-row">' +
+            '<div class="dot-pulse"><span></span><span></span><span></span></div>' +
+            'Working \u2014 deterministic checks first, then narration\u2026' +
+          '</div>' +
+        '</div>' +
+      '</div>';
+    document.getElementById('messages').appendChild(row);
+  }
+
+  /* ── Hint chips ── */
+  document.querySelectorAll('.hint-chip').forEach(function (chip) {
+    chip.addEventListener('click', function () {
+      box.value = chip.textContent.trim();
+      updateInput();
+      box.focus();
+    });
+  });
+
+  /* ── Language switcher ── */
+  document.querySelectorAll('.lang-btn').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      document.querySelectorAll('.lang-btn').forEach(function (b) {
+        b.classList.remove('active');
+      });
+      btn.classList.add('active');
+      box.placeholder = btn.getAttribute('data-lang') === 'sw'
+        ? 'Andika ombi lako hapa\u2026 (:lang en kurudi Kiingereza)'
+        : btn.getAttribute('data-lang') === 'lg'
+        ? 'Wandiika omubazi gwo wano\u2026 (:lang en okudda mu Lungereza)'
+        : 'Ask anything \u2014 or type :help for commands. Runs 100% offline.';
+    });
+  });
+
+  /* ── Nav items ── */
+  document.querySelectorAll('.nav-item').forEach(function (item) {
+    item.addEventListener('click', function () {
+      document.querySelectorAll('.nav-item').forEach(function (i) {
+        i.classList.remove('active');
+      });
+      item.classList.add('active');
+    });
+  });
+
+  /* ── Helpers ── */
+  function scrollBottom() {
+    var m = document.getElementById('messages');
+    m.scrollTop = m.scrollHeight;
+  }
+
+  function nowTime() {
+    var d = new Date();
+    return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+  }
+
+  function esc(s) {
+    return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br>');
+  }
+
+  // Scroll to bottom on load
+  scrollBottom();
+}());
+</script>
+</body>
+</html>

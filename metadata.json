@@ -1,27 +1,27 @@
 {
-  "team_id": "SET_ME_devpost_team_id",
+  "team_id": "1148777",
   "domain": "autonomous_ai_agents",
-  "language_scope": ["en", "sw"],
+  "language_scope": ["en", "sw", "lg"],
   "african_alpha_claim": true,
   "budget_laptop_claim": true,
   "submitter": {
-    "name": "SET_ME_full_name",
-    "email": "SET_ME_email@domain.tld",
-    "github_handle": "SET_ME_github_handle"
+    "name": "Okot Araa Andrew Aaron Otema",
+    "email": "otemaach@gmail.com",
+    "github_handle": "BROCKUGANDA"
   },
   "cross_disciplinary_pairing": {
     "discipline": "financial_compliance",
     "load_bearing": true,
-    "description": "Kanzu Agent pairs on-device language modelling with AML/CFT supervisory practice for East African SACCOs and micro-SMEs. The pairing is load-bearing, not cosmetic: a deterministic Go rule engine (eight FATF-aligned typologies over a local SQLite ledger) performs every flagging decision, and the model is confined to non-adjudicative work - decomposing an officer's natural-language request into tool calls, and rendering the rule engine's structured findings into a bilingual (English/Kiswahili) suspicious-activity narrative with retrieved regulatory citations. Removing the compliance layer removes the product; removing the model leaves a working but unusable command-line auditor."
+    "description": "Kanzu Agent pairs on-device language modelling with AML/CFT supervisory practice for Ugandan SACCOs and micro-SMEs. The pairing is load-bearing, not cosmetic: a deterministic Go rule engine (ten FATF-aligned typologies over a local SQLite ledger, calibrated to UGX thresholds under Uganda's Anti-Money Laundering Act 2013) performs every flagging decision, and the model is confined to non-adjudicative work — decomposing an officer's natural-language request into tool calls, and rendering the rule engine's structured findings into a trilingual (English/Kiswahili/Luganda) suspicious-activity narrative with retrieved regulatory citations for filing with Uganda's Financial Intelligence Authority (FIA). Removing the compliance layer removes the product; removing the model leaves a working but plain-text command-line auditor."
   },
   "test_prompts": [
     {
       "prompt_id": "tp_001",
-      "prompt": "You are an offline compliance agent for a Kenyan SACCO. These are the only tools you may call:\n  ledger.query(start_date, end_date, member_id?)\n  rules.scan(rule_ids)\n  kb.search(query, lang)\n  report.draft(template, case_ids, lang)\n\nA branch officer asks: \"Flag suspicious transactions from last week and draft a compliance note for the savings committee.\"\n\nReturn exactly three sections:\n1. PLAN - an ordered JSON array of tool calls with concrete arguments. Use only the tools listed above and do not invent parameters.\n2. GATE - one sentence naming which single step must be produced by deterministic code rather than by a language model, and why that matters for a suspicious-activity report.\n3. RISK - one sentence describing what goes wrong if the agent drafts the note before the scan completes."
+      "prompt": "You are an offline compliance agent for a Ugandan SACCO. These are the only tools you may call:\n  ledger.query(start_date, end_date, member_id?)\n  rules.scan(rule_ids)\n  kb.search(query, lang)\n  report.draft(template, case_ids, lang)\n\nA branch officer asks: \"Flag suspicious transactions from last week and draft a compliance note for the savings committee.\"\n\nReturn exactly three sections:\n1. PLAN - an ordered JSON array of tool calls with concrete arguments. Use only the tools listed above and do not invent parameters.\n2. GATE - one sentence naming which single step must be produced by deterministic code rather than by a language model, and why that matters for a suspicious-activity report filed with Uganda's Financial Intelligence Authority (FIA).\n3. RISK - one sentence describing what goes wrong if the agent drafts the note before the scan completes."
     },
     {
       "prompt_id": "tp_002",
-      "prompt": "Wewe ni wakala wa uchunguzi wa fedha unaofanya kazi nje ya mtandao (offline) kwa SACCO ya Kenya. Zana zinazopatikana ni: ledger.query, rules.scan, kb.search, report.draft.\n\nMwanachama mmoja ameweka amana tano za KES 240,000 kwa muda wa siku mbili. Kila amana iko chini ya kiwango cha ndani cha kuripoti cha SACCO cha KES 1,000,000, lakini jumla yake ni KES 1,200,000.\n\nJibu kwa Kiswahili, kwa sehemu tatu:\n1. MPANGO - hatua tatu za kutumia zana zilizotajwa, kwa mpangilio.\n2. MAELEZO - kwa nini mtindo huu wa amana unaitwa \"structuring\" (kugawanya miamala), na ni kipengele kipi cha data kinathibitisha hilo.\n3. ILANI - sentensi mbili za taarifa kwa kamati ya SACCO, bila kumhukumu mwanachama."
+      "prompt": "Wewe ni wakala wa uchunguzi wa fedha unaofanya kazi nje ya mtandao (offline) kwa SACCO ya Uganda. Zana zinazopatikana ni: ledger.query, rules.scan, kb.search, report.draft.\n\nMwanachama mmoja ameweka amana tano za UGX 6,720,000 kwa muda wa siku mbili. Kila amana iko chini ya kiwango cha ndani cha kuripoti cha SACCO cha UGX 28,000,000, lakini jumla yake ni UGX 33,600,000.\n\nJibu kwa Kiswahili, kwa sehemu tatu:\n1. MPANGO - hatua tatu za kutumia zana zilizotajwa, kwa mpangilio.\n2. MAELEZO - kwa nini mtindo huu wa amana unaitwa \"structuring\" (kugawanya miamala), na ni kipengele kipi cha data kinathibitisha hilo.\n3. ILANI - sentensi mbili za taarifa kwa kamati ya SACCO na Mamlaka ya Ujasusi wa Fedha (FIA) ya Uganda, bila kumhukumu mwanachama."
     }
   ],
   "model": {
@@ -44,7 +44,7 @@
     "gguf_tensor_count": 338,
     "gguf_params_count": 1543714304,
     "gguf_context_length": 32768,
-    "artifact_selection_note": "Two public Q4_K_M builds of Qwen2.5-1.5B-Instruct were measured head to head on the dev machine (see REPORT.md). Qwen's own GGUF materialises output.weight as a separate tensor instead of tying it to token_embd.weight, so its tensor table sums to 1,777,088,000 rather than the 1,543,714,304 on the model card. adtc-profiler derives the parameter count from that table (general.parameter_count is absent from both files) and applies a two-sided 15 percent fraud check, so the first-party build would score params_match=false against any claim consistent with the model card. This build ties the tensor, sums to 1.54B, is 155 MB lighter in peak RSS, and benchmarks within one standard deviation on generation throughput. Verify locally with: go run ./cmd/kanzu doctor"
+    "artifact_selection_note": "Two public Q4_K_M builds of Qwen2.5-1.5B-Instruct were measured head to head on the dev machine (see REPORT.md §3.2). Qwen's own GGUF materialises output.weight as a separate tensor instead of tying it to token_embd.weight, so its tensor table sums to 1,777,088,000 rather than the 1,543,714,304 on the model card. adtc-profiler derives the parameter count from that table (general.parameter_count is absent from both files) and applies a two-sided 15 percent fraud check, so the first-party build would score params_match=false against any claim consistent with the model card. This build ties the tensor, sums to 1.54B, is 155 MB lighter in peak RSS, and benchmarks within one standard deviation on generation throughput. Verify locally with: go run ./cmd/kanzu doctor"
   },
   "_kanzu": {
     "app_version": "1.0.0",

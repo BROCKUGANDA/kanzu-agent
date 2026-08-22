@@ -14,8 +14,8 @@
 //   - every alert carries the transaction ids and the threshold it fired against
 //   - the detection layer works with the model absent entirely
 //
-// The eight typologies below are the patterns FATF's guidance for the financial
-// inclusion sector and Kenyan SACCO supervisory practice actually turn up in
+// The ten typologies below are the patterns FATF's guidance for the financial
+// inclusion sector and Ugandan SACCO supervisory practice actually turn up in
 // small deposit-taking institutions. They are intentionally not exotic.
 package rules
 
@@ -33,14 +33,16 @@ import (
 // Rule identifiers. Stable strings: they appear in stored alerts and in reports,
 // so renaming one breaks historical records.
 const (
-	RuleStructuring  = "R01_STRUCTURING"
-	RuleVelocity     = "R02_VELOCITY"
-	RuleRoundAmount  = "R03_ROUND_AMOUNT"
-	RuleDormantReact = "R04_DORMANT_REACTIVATION"
-	RulePassThrough  = "R05_RAPID_PASSTHROUGH"
-	RuleCrossBorder  = "R06_CROSS_BORDER_EXPOSURE"
-	RuleKYCGap       = "R07_KYC_LIMIT_BREACH"
-	RuleThresholdHug = "R08_THRESHOLD_HUGGING"
+	RuleStructuring    = "R01_STRUCTURING"
+	RuleVelocity       = "R02_VELOCITY"
+	RuleRoundAmount    = "R03_ROUND_AMOUNT"
+	RuleDormantReact   = "R04_DORMANT_REACTIVATION"
+	RulePassThrough    = "R05_RAPID_PASSTHROUGH"
+	RuleCrossBorder    = "R06_CROSS_BORDER_EXPOSURE"
+	RuleKYCGap         = "R07_KYC_LIMIT_BREACH"
+	RuleThresholdHug   = "R08_THRESHOLD_HUGGING"
+	RuleMultiAcctCycle = "R09_MULTI_ACCOUNT_CYCLING"
+	RuleAgentConc      = "R10_AGENT_CONCENTRATION"
 )
 
 // All returns every rule id in evaluation order.
@@ -48,6 +50,7 @@ func All() []string {
 	return []string{
 		RuleStructuring, RuleVelocity, RuleRoundAmount, RuleDormantReact,
 		RulePassThrough, RuleCrossBorder, RuleKYCGap, RuleThresholdHug,
+		RuleMultiAcctCycle, RuleAgentConc,
 	}
 }
 
@@ -104,34 +107,52 @@ var titles = map[string]map[i18n.Lang]string{
 	RuleStructuring: {
 		i18n.EN: "Structuring (deposit splitting)",
 		i18n.SW: "Kugawanya miamala (structuring)",
+		i18n.LG: "Okugabanya obutunzi (structuring)",
 	},
 	RuleVelocity: {
 		i18n.EN: "Transaction velocity spike",
 		i18n.SW: "Ongezeko la kasi ya miamala",
+		i18n.LG: "Okuwanira omuvudde gw'ebyenfuna",
 	},
 	RuleRoundAmount: {
 		i18n.EN: "Repeated round-figure amounts",
 		i18n.SW: "Kurudia kiasi kilichokamilika",
+		i18n.LG: "Okuddamu amannya agapangiddwa",
 	},
 	RuleDormantReact: {
 		i18n.EN: "Dormant account reactivation",
 		i18n.SW: "Kufufuka kwa akaunti tulivu",
+		i18n.LG: "Okuddamu okukozesa akawunti eyali eriho",
 	},
 	RulePassThrough: {
 		i18n.EN: "Rapid pass-through of funds (layering)",
 		i18n.SW: "Fedha kupita haraka (upangaji tabaka)",
+		i18n.LG: "Okuyita obwangu kw'ensimbi (layering)",
 	},
 	RuleCrossBorder: {
 		i18n.EN: "Higher-risk jurisdiction exposure",
 		i18n.SW: "Mahusiano na nchi za hatari kubwa",
+		i18n.LG: "Enkolagana n'ensi ez'obucwezi obunene",
 	},
 	RuleKYCGap: {
 		i18n.EN: "Activity beyond verified KYC tier",
 		i18n.SW: "Shughuli zaidi ya kiwango cha utambulisho",
+		i18n.LG: "Emirimu okutuuka awatali okwenkanya",
 	},
 	RuleThresholdHug: {
 		i18n.EN: "Amounts clustered below reporting threshold",
 		i18n.SW: "Viwango vilivyokusanyika chini ya kikomo cha kuripoti",
+		i18n.LG: "Amannya agakuŋŋaana wansi w'omugereka gw'okuwanika",
+	},
+	RuleMultiAcctCycle: {
+		i18n.EN: "Multi-account fund cycling",
+		i18n.SW: "Mzunguko wa fedha kati ya akaunti nyingi",
+		i18n.LG: "Okuzungulusa ensimbi mu makawunti amangi",
+	},
+	RuleAgentConc: {
+		i18n.EN: "Agent-banking deposit concentration",
+		i18n.SW: "Mkusanyiko wa amana kupitia wakala mmoja",
+		i18n.LG: "Okuŋŋaana kw'obutunzi mu lukalala lw'omukozi omu",
 	},
 }
 
@@ -141,7 +162,7 @@ var titles = map[string]map[i18n.Lang]string{
 func (f Finding) Describe(lang i18n.Lang) string {
 	cur := f.Facts.Currency
 	if cur == "" {
-		cur = "KES"
+		cur = "UGX"
 	}
 	total := ledger.Money(f.Facts.TotalMinor, cur)
 	thr := ledger.Money(f.Facts.ThresholdMinor, cur)
@@ -149,8 +170,13 @@ func (f Finding) Describe(lang i18n.Lang) string {
 	maxAmt := ledger.Money(f.Facts.MaxMinor, cur)
 
 	sw := lang == i18n.SW
+	lg := lang == i18n.LG
 	switch f.RuleID {
 	case RuleStructuring:
+		if lg {
+			return fmt.Sprintf("Ebyenfuna %d ebya waggulu wa %s mu saawa %d, buli kimu wansi wa ekigatte kya %s naye omuwaggulu gususse ekigatte.",
+				f.Facts.Count, total, f.Facts.WindowHours, thr)
+		}
 		if sw {
 			return fmt.Sprintf("Miamala %d ya jumla ya %s katika saa %d, kila mmoja chini ya kikomo cha %s, lakini jumla imevuka kikomo.",
 				f.Facts.Count, total, f.Facts.WindowHours, thr)
@@ -158,6 +184,10 @@ func (f Finding) Describe(lang i18n.Lang) string {
 		return fmt.Sprintf("%d transactions totalling %s within %d hours; each individually below the %s threshold while the aggregate exceeds it.",
 			f.Facts.Count, total, f.Facts.WindowHours, thr)
 	case RuleVelocity:
+		if lg {
+			return fmt.Sprintf("Omuwendo gwa %s mu saawa %d gugulukira emirundi %.1f gy'ekkomo ly'omu nju lya mupolisi (%s).",
+				total, f.Facts.WindowHours, f.Facts.Multiple, base)
+		}
 		if sw {
 			return fmt.Sprintf("Thamani ya %s katika saa %d ni mara %.1f ya kawaida ya mwanachama (%s).",
 				total, f.Facts.WindowHours, f.Facts.Multiple, base)
@@ -165,6 +195,10 @@ func (f Finding) Describe(lang i18n.Lang) string {
 		return fmt.Sprintf("Window value of %s over %d hours is %.1fx the member's own trailing baseline of %s.",
 			total, f.Facts.WindowHours, f.Facts.Multiple, base)
 	case RuleRoundAmount:
+		if lg {
+			return fmt.Sprintf("Omuwendo gumwe ogupangiddwa gwa %s guddiriddwamu emirundi %d; waggulu wa %s.",
+				maxAmt, f.Facts.Count, total)
+		}
 		if sw {
 			return fmt.Sprintf("Kiasi kilekile kilichokamilika cha %s kimerudiwa mara %d; jumla %s.",
 				maxAmt, f.Facts.Count, total)
@@ -172,6 +206,10 @@ func (f Finding) Describe(lang i18n.Lang) string {
 		return fmt.Sprintf("The identical round figure %s repeats %d times, totalling %s.",
 			maxAmt, f.Facts.Count, total)
 	case RuleDormantReact:
+		if lg {
+			return fmt.Sprintf("Akawunti yaali eriho emisana %d, ng'ebyo ebyenfuna %d eby'omuwaggulu wa %s bikyusibwa.",
+				f.Facts.DormantDays, f.Facts.Count, total)
+		}
 		if sw {
 			return fmt.Sprintf("Akaunti ilikaa tulivu siku %d, kisha ilipokea miamala %d ya jumla %s.",
 				f.Facts.DormantDays, f.Facts.Count, total)
@@ -179,6 +217,10 @@ func (f Finding) Describe(lang i18n.Lang) string {
 		return fmt.Sprintf("Account was inactive for %d days, then recorded %d transactions totalling %s.",
 			f.Facts.DormantDays, f.Facts.Count, total)
 	case RulePassThrough:
+		if lg {
+			return fmt.Sprintf("Ebikumi %.0f%% by'ensimbi ezayingira byavaayo mu saawa %d (waggulu wa %s).",
+				f.Facts.Multiple, f.Facts.WindowHours, total)
+		}
 		if sw {
 			return fmt.Sprintf("Asilimia %.0f ya fedha zilizoingia zilitolewa tena katika saa %d (jumla %s).",
 				f.Facts.Multiple, f.Facts.WindowHours, total)
@@ -186,6 +228,10 @@ func (f Finding) Describe(lang i18n.Lang) string {
 		return fmt.Sprintf("%.0f%% of incoming value left the account again within %d hours (total %s).",
 			f.Facts.Multiple, f.Facts.WindowHours, total)
 	case RuleCrossBorder:
+		if lg {
+			return fmt.Sprintf("Ebyenfuna %d eby'omuwaggulu wa %s birikwatanisa n'ensi ez'olutwe: %s.",
+				f.Facts.Count, total, strings.Join(f.Facts.Countries, ", "))
+		}
 		if sw {
 			return fmt.Sprintf("Miamala %d ya jumla %s inahusisha nchi za hatari kubwa: %s.",
 				f.Facts.Count, total, strings.Join(f.Facts.Countries, ", "))
@@ -193,6 +239,10 @@ func (f Finding) Describe(lang i18n.Lang) string {
 		return fmt.Sprintf("%d transactions totalling %s involve watchlisted jurisdictions: %s.",
 			f.Facts.Count, total, strings.Join(f.Facts.Countries, ", "))
 	case RuleKYCGap:
+		if lg {
+			return fmt.Sprintf("Eddirisa ly'obwenkanya ndi %d, naye emirimu egy'omuwaggulu wa %s gigusse ekigatte kya %s.",
+				f.Facts.KYCLevel, total, thr)
+		}
 		if sw {
 			return fmt.Sprintf("Kiwango cha utambulisho ni %d, lakini shughuli za %s zimevuka ukomo wa %s.",
 				f.Facts.KYCLevel, total, thr)
@@ -200,12 +250,38 @@ func (f Finding) Describe(lang i18n.Lang) string {
 		return fmt.Sprintf("KYC tier is %d, yet activity of %s exceeds the tier ceiling of %s.",
 			f.Facts.KYCLevel, total, thr)
 	case RuleThresholdHug:
+		if lg {
+			return fmt.Sprintf("Ebyenfuna %d biri mu 85%% ne 100%% y'ekigatte kya %s (ennene ennene %s).",
+				f.Facts.Count, thr, maxAmt)
+		}
 		if sw {
 			return fmt.Sprintf("Miamala %d imepangwa kati ya asilimia 85 na 100 ya kikomo cha %s (kubwa zaidi %s).",
 				f.Facts.Count, thr, maxAmt)
 		}
 		return fmt.Sprintf("%d transactions sit between 85%% and 100%% of the %s threshold (largest %s).",
 			f.Facts.Count, thr, maxAmt)
+	case RuleMultiAcctCycle:
+		if lg {
+			return fmt.Sprintf("Ensimbi za %s zzunguluse mu makawunti %d mu saawa %d ng'ebyenfuna %d.",
+				total, f.Facts.Count, f.Facts.WindowHours, len(f.TxnIDs))
+		}
+		if sw {
+			return fmt.Sprintf("Fedha za %s zimezungushwa kati ya akaunti %d katika saa %d (%d miamala).",
+				total, f.Facts.Count, f.Facts.WindowHours, len(f.TxnIDs))
+		}
+		return fmt.Sprintf("%s cycled across %d accounts within %d hours (%d transactions).",
+			total, f.Facts.Count, f.Facts.WindowHours, len(f.TxnIDs))
+	case RuleAgentConc:
+		if lg {
+			return fmt.Sprintf("Omukozi omu wa agent-banking ayetegeeka %.0f%% y'obutunzi bw'omupolisi (%s mu ebyenfuna %d).",
+				f.Facts.Multiple, total, f.Facts.Count)
+		}
+		if sw {
+			return fmt.Sprintf("Wakala mmoja wa agent-banking amechangia %.0f%% ya amana za mwanachama (%s katika miamala %d).",
+				f.Facts.Multiple, total, f.Facts.Count)
+		}
+		return fmt.Sprintf("A single agent-banking agent accounts for %.0f%% of this member's deposits (%s across %d transactions).",
+			f.Facts.Multiple, total, f.Facts.Count)
 	}
 	return fmt.Sprintf("%d transactions totalling %s.", f.Facts.Count, total)
 }
@@ -257,7 +333,7 @@ func (e *Engine) Scan(ctx context.Context, start, end time.Time, ruleIDs []strin
 	}
 	sort.Strings(order)
 
-	currency := e.Policy.Str("currency", "KES")
+	currency := e.Policy.Str("currency", "UGX")
 	threshold := e.Policy.Int("internal_report_threshold_minor", 100_000_000)
 
 	var out []Finding
@@ -381,6 +457,11 @@ func (e *Engine) evaluate(ctx context.Context, ruleID string, in input) (Finding
 	case RuleThresholdHug:
 		f, ok := detectThresholdHugging(in)
 		return f, ok, nil
+	case RuleMultiAcctCycle:
+		return detectMultiAccountCycling(ctx, in)
+	case RuleAgentConc:
+		f, ok := detectAgentConcentration(in)
+		return f, ok, nil
 	}
 	return Finding{}, false, nil
 }
@@ -452,8 +533,8 @@ func detectStructuring(in input) (Finding, bool) {
 // ── R02 velocity ─────────────────────────────────────────────────────────────
 //
 // Baselined against the member, not the institution. A market trader moving
-// KES 400,000 a week is normal; the same volume from a member whose trailing
-// average is KES 20,000 is not. Requires a minimum history so a new member's
+// UGX 11,200,000 a week is normal; the same volume from a member whose trailing
+// average is UGX 560,000 is not. Requires a minimum history so a new member's
 // first active week cannot fire it.
 func detectVelocity(ctx context.Context, in input) (Finding, bool, error) {
 	windowHours := in.policy.Int("velocity_window_hours", 168)
@@ -734,6 +815,143 @@ func detectThresholdHugging(in input) (Finding, bool) {
 	f.Facts.Count = len(hits)
 	f.Facts.TotalMinor = total
 	f.Facts.MaxMinor = maxAmt
+	return f, true
+}
+
+// ── R09 multi-account cycling ────────────────────────────────────────────────
+//
+// A member (or a coordinated group using the same member account) moves funds
+// back and forth across multiple SACCO sub-accounts within a tight window.
+// This pattern is common in Uganda boda-boda (motorcycle taxi) cooperatives
+// where an informal treasurer uses the SACCO as a conduit rather than a store
+// of savings. Detection: credits to distinct internal destination accounts
+// exceed the threshold and the net outflow from any single account within the
+// window exceeds the cycling_outflow_pct of total inflow.
+func detectMultiAccountCycling(ctx context.Context, in input) (Finding, bool, error) {
+	windowHours := in.policy.Int("cycling_window_hours", 48)
+	minAccounts := int(in.policy.Int("cycling_min_accounts", 3))
+	window := time.Duration(windowHours) * time.Hour
+
+	// Group transactions by destination account to count distinct accounts.
+	destAccounts := map[string][]ledger.Txn{}
+	for _, t := range in.txns {
+		dest := strings.TrimSpace(t.Country) // reuse Country field as counterparty tag
+		if dest == "" {
+			dest = t.Channel
+		}
+		destAccounts[dest] = append(destAccounts[dest], t)
+	}
+	if len(destAccounts) < minAccounts {
+		return Finding{}, false, nil
+	}
+
+	// Identify the tightest qualifying window.
+	credits := filterDirection(in.txns, true)
+	debits := filterDirection(in.txns, false)
+	if len(credits) == 0 || len(debits) == 0 {
+		return Finding{}, false, nil
+	}
+
+	var bestTotal int64
+	var bestIDs []string
+	for _, c := range credits {
+		var outflow int64
+		ids := []string{c.ID}
+		for _, d := range debits {
+			delta := d.TS.Sub(c.TS)
+			if delta < 0 || delta > window {
+				continue
+			}
+			outflow += d.AmountMinor
+			ids = append(ids, d.ID)
+		}
+		if outflow > bestTotal && outflow >= in.threshold/4 {
+			bestTotal = outflow
+			bestIDs = append([]string(nil), ids...)
+		}
+	}
+	if len(bestIDs) < 2 || bestTotal == 0 {
+		return Finding{}, false, nil
+	}
+
+	sev := SevMedium
+	if bestTotal >= in.threshold/2 {
+		sev = SevHigh
+	}
+	f := in.base(RuleMultiAcctCycle, sev, clamp01(float64(bestTotal)/float64(maxI64(in.threshold, 1))))
+	f.TxnIDs = bestIDs
+	f.Facts.Count = len(destAccounts)
+	f.Facts.TotalMinor = bestTotal
+	f.Facts.WindowHours = int(windowHours)
+	return f, true, nil
+}
+
+// ── R10 agent-banking deposit concentration ──────────────────────────────────
+//
+// Uganda's agent-banking network (MTN MoMo agents, Airtel Money agents) is a
+// legitimate and important inclusion channel. But if a single agent origin
+// accounts for an outsized share of a member's deposits, that could indicate
+// ghost-depositor fraud, placement by a third party using the member's account,
+// or a colluding agent. Detection: one channel label accounts for > N% of the
+// member's total deposits in the window.
+func detectAgentConcentration(in input) (Finding, bool) {
+	minPct := float64(in.policy.Int("agent_concentration_pct", 80))
+	minTxns := int(in.policy.Int("agent_concentration_min_txns", 4))
+
+	credits := filterDirection(in.txns, true)
+	if len(credits) < minTxns {
+		return Finding{}, false
+	}
+
+	total := sumAmounts(credits)
+	if total <= 0 {
+		return Finding{}, false
+	}
+
+	// Count by channel label (MTN_MOMO, AIRTEL, AGENT, etc.)
+	byChannel := map[string]int64{}
+	for _, t := range credits {
+		ch := strings.ToUpper(strings.TrimSpace(t.Channel))
+		if ch == "" {
+			ch = "UNKNOWN"
+		}
+		byChannel[ch] += t.AmountMinor
+	}
+
+	var bestChannel string
+	var bestAmt int64
+	for ch, amt := range byChannel {
+		if amt > bestAmt {
+			bestAmt = amt
+			bestChannel = ch
+		}
+	}
+
+	pct := float64(bestAmt) / float64(total) * 100
+	if pct < minPct || len(credits) < minTxns {
+		return Finding{}, false
+	}
+
+	// Collect transactions from the dominant channel.
+	var ids []string
+	var count int
+	for _, t := range credits {
+		ch := strings.ToUpper(strings.TrimSpace(t.Channel))
+		if ch == bestChannel {
+			ids = append(ids, t.ID)
+			count++
+		}
+	}
+
+	sev := SevLow
+	if bestAmt >= in.threshold/4 {
+		sev = SevMedium
+	}
+	f := in.base(RuleAgentConc, sev, clamp01(pct/200))
+	f.TxnIDs = ids
+	f.Facts.Count = count
+	f.Facts.TotalMinor = bestAmt
+	f.Facts.Multiple = pct
 	return f, true
 }
 

@@ -5,14 +5,22 @@ model/*.bin
 model/*.safetensors
 
 # ── Profiler / benchmark output ───────────────────────────────────────────────
-submission.json
+# NOTE: submission.json is version-controlled (it is the profiler's submission
+# record and is kept in sync with metadata.json by the CI metadata step; its
+# docker_image_digest is patched by .github/workflows/docker.yml on push to
+# main). audit.json / verdict.json are local-only profiler artefacts.
+# submission.json
 audit.json
 verdict.json
 bench/*.json
 bench/*.log
 
 # ── Kanzu runtime state (rebuildable from fixtures + knowledge/) ──────────────
-var/
+# The SQLite ledger and per-inference prompt logs are local runtime artefacts.
+var/kanzu.db*
+var/prompts/prompt-[0-9]*.txt
+# The six versioned system prompts (prompt-{narration,planning}-{en,sw,lg}.txt)
+# ARE committed so the Dockerfile COPY var/prompts/ works in CI.
 *.db
 *.db-shm
 *.db-wal

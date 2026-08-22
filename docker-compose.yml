@@ -1,0 +1,41 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# docker-compose.yml — local reproducibility testing for Kanzu Agent
+#
+# Usage:
+#   docker compose run --rm kanzu doctor         # health check (no model)
+#   docker compose run --rm kanzu init           # seed ledger
+#   docker compose run --rm kanzu scan           # deterministic rules only
+#   docker compose run --rm -e KANZU_LANG=sw kanzu ask "chunguza miamala"
+#
+# Pre-requisites:
+#   1. docker compose build
+#   2. bash download_model.sh          (puts GGUF into ./model/)
+# ─────────────────────────────────────────────────────────────────────────────
+
+services:
+  kanzu:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        LLAMA_TAG: "b10580"
+    image: kanzu-agent:local
+    volumes:
+      # Model weights — read-only so the container cannot modify them.
+      - ./model:/app/model:ro
+      # Persistent ledger — named volume so data survives container restart.
+      - kanzu-data:/app/var
+    environment:
+      KANZU_ROOT: /app
+      # Override at runtime: docker compose run -e KANZU_LANG=sw kanzu ask "..."
+      KANZU_LANG: en
+      KANZU_THREADS: "4"
+      KANZU_SEED: "42"
+      KANZU_DUTY_CYCLE: "0.7"
+    # The default CMD is "doctor" (set in Dockerfile); override per run.
+    stdin_open: true
+    tty: true
+
+volumes:
+  kanzu-data:
+    driver: local

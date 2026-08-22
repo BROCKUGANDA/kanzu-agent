@@ -654,7 +654,7 @@ func Money(minor int64, currency string) string {
 	if neg {
 		sign = "-"
 	}
-	return fmt.Sprintf("%s%s %s.%02d", sign, orDefault(currency, "KES"), b.String(), cents)
+	return fmt.Sprintf("%s%s %s.%02d", sign, orDefault(currency, "UGX"), b.String(), cents)
 }
 
 func boolInt(b bool) int {

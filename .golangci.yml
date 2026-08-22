@@ -1,0 +1,65 @@
+opts:
+  - --long-help
+  - --timeout=5m
+
+run:
+  go: 1.25
+  # Match the Dockerfile builder (golang:1.25) and the local toolchain.
+  build: true
+
+linting:
+  enable-all: false
+  enable:
+    - errchkjson
+    - gocheckcompilerdirectives
+    - goconst
+    - gocritic
+    - gosimple
+    - govet
+    - ineffassign
+    - misspell
+    - staticcheck
+    - testifylint
+    - usetesting
+    - wastedimport
+  disable:
+    - wrapcheck
+    - nlreturn
+
+issues:
+  # Fatigued linters that would only fire on the generated vendored tree.
+  exclude-dirs:
+    - vendor/.*
+    - knowledge/.*
+  exclude-rules:
+    # The vendored modernc.org/sqlite / sqlite3 layer emits patterns we do not own.
+    - path: vendor/.*
+      linters:
+        - maligned
+        - wastedassign
+    # Error strings in tests are intentionally short.
+    - path: _test\.go$
+      linters:
+        - goerr113
+        - err113
+
+linters-settings:
+  govet:
+    enable-all: true
+    disable:
+      - fieldalignment
+  gocritic:
+    enabled-tags:
+      - diagnostic
+      - style
+      - performance
+    disabled-diagnostics:
+      # single-letter loop variables are idiomatic in tight ledger loops.
+      - rangeValCopy
+  misspell:
+    locale: US
+  goconst:
+    min-occurrences: 3
+  errchkjson:
+    # JSON marshalling of Outcome is on the hot path; we trust it.
+    report: false

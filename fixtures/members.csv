@@ -1,10 +1,10 @@
 member_id,name,joined_days_ago,kyc_level,risk_band,is_pep,dormant,home_branch
-M-001,Amina Wanjiru,940,2,medium,0,0,Nakuru
-M-002,Joseph Otieno,1420,2,low,0,1,Kisumu
-M-003,Grace Mueni,610,2,medium,0,0,Machakos
-M-004,Peter Kimani,780,2,high,0,0,Nairobi CBD
-M-005,Halima Abdi,95,1,medium,0,0,Garissa
-M-006,Daniel Mwangi,1150,2,low,0,0,Nyeri
-M-007,Sarah Njeri,530,2,medium,0,0,Thika
-M-008,Faith Chebet,860,2,low,0,0,Eldoret
-M-009,Rehema Salim,1290,3,high,1,0,Mombasa
+M-001,Aisha Nakibuka,940,2,medium,0,0,Kampala Central
+M-002,Robert Ochen,1420,2,low,0,1,Gulu
+M-003,Grace Amongin,610,2,medium,0,0,Lira
+M-004,Patrick Mugisha,780,2,high,0,0,Kampala Central
+M-005,Fatuma Nalwoga,95,1,medium,0,0,Mbale
+M-006,Charles Ssemwanga,1150,2,low,0,0,Entebbe
+M-007,Sarah Auma,530,2,medium,0,0,Jinja
+M-008,Peace Nabirye,860,2,low,0,0,Mbarara
+M-009,Hassan Waiswa,1290,3,high,1,0,Kampala Central

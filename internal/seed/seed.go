@@ -82,7 +82,7 @@ func Load(ctx context.Context, db *ledger.DB, fixturesDir string, now time.Time)
 		// One savings account per member keeps the fixture readable; the schema
 		// supports many.
 		acct := "A-" + strings.TrimPrefix(m.ID, "M-")
-		if err := db.UpsertAccount(ctx, acct, m.ID, "savings", "KES", m.JoinedAt); err != nil {
+		if err := db.UpsertAccount(ctx, acct, m.ID, "savings", "UGX", m.JoinedAt); err != nil {
 			return rep, err
 		}
 		rep.Accounts++
@@ -124,7 +124,7 @@ func Load(ctx context.Context, db *ledger.DB, fixturesDir string, now time.Time)
 			Direction:    strings.ToLower(row["direction"]),
 			Channel:      strings.ToLower(row["channel"]),
 			AmountMinor:  minor,
-			Currency:     orDefault(row["currency"], "KES"),
+			Currency:     orDefault(row["currency"], "UGX"),
 			Counterparty: row["counterparty"],
 			Country:      strings.ToUpper(row["country"]),
 			Narrative:    row["narrative"],

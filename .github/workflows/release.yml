@@ -1,0 +1,101 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*.*.*"]
+
+permissions:
+  contents: write
+  packages: write
+
+jobs:
+  release:
+    name: Build release binaries & publish
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - goos: linux
+            goarch: amd64
+            suffix: linux-amd64
+          - goos: linux
+            goarch: arm64
+            suffix: linux-arm64
+          - goos: windows
+            goarch: amd64
+            suffix: windows-amd64.exe
+          - goos: darwin
+            goarch: arm64
+            suffix: darwin-arm64
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache-dependency-path: go.sum
+
+      - name: Build ${{ matrix.suffix }}
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+          CGO_ENABLED: "0"
+        run: |
+          VERSION=${GITHUB_REF_NAME}
+          OUT="dist/kanzu-${VERSION}-${{ matrix.suffix }}"
+          mkdir -p dist
+          go build -mod=vendor -trimpath \
+            -ldflags="-s -w -X main.version=${VERSION}" \
+            -o "${OUT}" \
+            ./cmd/kanzu
+          echo "Built: ${OUT}"
+          sha256sum "${OUT}" >> dist/SHA256SUMS
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: kanzu-${{ matrix.suffix }}
+          path: |
+            dist/kanzu-*
+            dist/SHA256SUMS
+          retention-days: 30
+
+  github-release:
+    name: Create GitHub Release
+    runs-on: ubuntu-latest
+    needs: release
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist/
+          merge-multiple: true
+
+      - name: Deduplicate SHA256SUMS
+        run: |
+          sort -u dist/SHA256SUMS -o dist/SHA256SUMS
+
+      - name: Extract changelog section
+        id: changelog
+        run: |
+          VERSION=${GITHUB_REF_NAME}
+          BODY=$(awk "/^## \[?${VERSION}\]?/{flag=1;next}/^## /{flag=0}flag" REPORT.md | head -40)
+          echo "BODY<<EOF" >> $GITHUB_OUTPUT
+          echo "${BODY:-Release ${VERSION}}" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: "Kanzu Agent ${{ github.ref_name }}"
+          body: ${{ steps.changelog.outputs.BODY }}
+          draft: false
+          prerelease: ${{ contains(github.ref_name, '-rc') || contains(github.ref_name, '-beta') }}
+          files: |
+            dist/kanzu-*
+            dist/SHA256SUMS
+          generate_release_notes: true

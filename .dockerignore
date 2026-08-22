@@ -1,0 +1,46 @@
+# ── model weights — never in the image (940 MB, gitignored by rule) ──────────
+model/
+*.gguf
+*.gguf.partial
+*.bin
+*.safetensors
+
+# ── runtime state — rebuilt by kanzu init inside the container ───────────────
+var/
+
+# ── training workspace ────────────────────────────────────────────────────────
+training/.venv/
+training/out/
+training/checkpoints/
+training/*.jsonl
+
+# ── vendored llama.cpp binaries — installed inside the image from GitHub ──────
+vendor/llama.cpp/
+
+# ── profiler / ADTC tooling ───────────────────────────────────────────────────
+.tools/
+submission.json
+audit.json
+verdict.json
+
+# ── Go build artefacts ────────────────────────────────────────────────────────
+bin/
+dist/
+*.test
+*.out
+
+# ── Git ───────────────────────────────────────────────────────────────────────
+.git/
+.gitattributes
+
+# ── editor / OS ───────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+
+# ── CI tooling (not needed in image) ─────────────────────────────────────────
+.github/
+docs/
+web/

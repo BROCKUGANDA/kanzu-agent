@@ -4,15 +4,24 @@ Download HF AML/KYC/compliance datasets and convert them to llama.cpp
 ChatML-format JSONL for LoRA fine-tuning of Kanzu Agent.
 
 Datasets used:
-  - Rakeshadasani/banking-finance-qa-dataset (~3000 QA pairs)
-  - Azfarhashmi/adaption-financial-crime-reasoning-traces (compliance reasoning)
-  - SaiPavankumar22/FinWise (multi-turn finance dialogues with AML scenarios)
-  - sovereign-forger/kyc-aml-sample-data (KYC/AML structured data)
+  - Azfarhashmi/adaption-financial-crime-reasoning-traces (500 compliance reasoning traces)
+  - SaiPavankumar22/FinWise (1000 multi-turn finance dialogues)
+  - sovereign-forger/kyc-aml-sample-data (300 KYC/AML profiles)
+  - electricsheepafrica/africa-mobile-money-fraud-dataset (200 Africa mobile money fraud cases)
+  - electricsheepafrica/africa-fintech-neobank-dataset (200 African fintech fraud cases)
+  - preetisheoran/nfpc-parquet-dataset (200 mule account profiles)
+  - HaseebDev/aml_transaction_anomalies (100 AML transaction anomaly narratives)
 
-Output: training/training.jsonl (deduplicated, shuffled, ChatML-formatted).
+Each dataset is converted to ChatML format with user/assistant pairs.
+Tabular datasets (fraud, mule accounts) are converted to natural-language QA pairs.
+
+Output:
+  training/training.jsonl          - full deduplicated dataset (ChatML)
+  training/train.jsonl             - 90% training split
+  training/test.jsonl              - 10% held-out test split
 
 Usage:
-  pip install datasets
+  pip install datasets pandas
   python3 training/prepare_datasets.py
 """
 
@@ -33,28 +42,20 @@ KANZU_SYSTEM = (
 
 DATASETS = [
     {
-        "name": "banking-finance-qa",
-        "repo": "Rakeshadasani/banking-finance-qa-dataset",
-        "split": "train",
-        "fields": {"instruction": "instruction", "input": "input", "output": "output"},
-        "max_examples": 3000,
-        "format": "alpaca",
-    },
-    {
         "name": "financial-crime-reasoning",
         "repo": "Azfarhashmi/adaption-financial-crime-reasoning-traces",
         "split": "train",
         "fields": None,
         "max_examples": 500,
-        "format": "chatml",
+        "format": "auto",
     },
     {
         "name": "finwise-dialogue",
         "repo": "SaiPavankumar22/FinWise",
         "split": "train",
-        "fields": {"content": "content"},
+        "fields": None,
         "max_examples": 1000,
-        "format": "openai",
+        "format": "auto",
     },
     {
         "name": "kyc-aml-samples",
@@ -62,6 +63,38 @@ DATASETS = [
         "split": "train",
         "fields": None,
         "max_examples": 300,
+        "format": "auto",
+    },
+    {
+        "name": "africa-mobile-money-fraud",
+        "repo": "electricsheepafrica/africa-mobile-money-fraud-dataset",
+        "split": "train",
+        "fields": None,
+        "max_examples": 200,
+        "format": "auto",
+    },
+    {
+        "name": "africa-fintech-neobank-fraud",
+        "repo": "electricsheepafrica/africa-fintech-neobank-dataset",
+        "split": "train",
+        "fields": None,
+        "max_examples": 200,
+        "format": "auto",
+    },
+    {
+        "name": "nfpc-parquet",
+        "repo": "preetisheoran/nfpc-parquet-dataset",
+        "split": "train",
+        "fields": None,
+        "max_examples": 200,
+        "format": "auto",
+    },
+    {
+        "name": "aml-transaction-anomalies",
+        "repo": "HaseebDev/aml_transaction_anomalies",
+        "split": "train",
+        "fields": None,
+        "max_examples": 100,
         "format": "auto",
     },
 ]
@@ -144,18 +177,176 @@ def convert_openai(item, fields):
     return [m for m in messages if m.get("content", "").strip()]
 
 
+def convert_mfraud(item):
+    """Convert electricsheepafrica/africa-mobile-money-fraud tabular row to ChatML."""
+    ft = item.get("fraud_type", "")
+    tt = item.get("transaction_type", "")
+    amt = item.get("transaction_amount", "")
+    country = item.get("country", "")
+    plat = item.get("mobile_money_platform", "")
+    fraud_detected = str(item.get("fraud_detected", "")).strip()
+    label = str(item.get("label", "")).strip()
+    # Build natural-language description of the transaction
+    user_text = (
+        f"A mobile money transaction in {country} via {plat}:\n"
+        f"  Transaction type: {tt}\n"
+        f"  Amount: {amt}\n"
+        f"  Fraud type (if any): {ft}\n"
+        f"  Fraud detected: {fraud_detected} ({label})\n\n"
+        f"Based on these features, is this transaction suspicious? "
+        f"Explain your reasoning in terms of money laundering and fraud risk indicators."
+    )
+    # Determine if fraudulent and build assistant response
+    if fraud_detected and fraud_detected.lower() not in ("0", "false", "no", ""):
+        assistant_text = (
+            f"This transaction shows indicators of potential fraud/money laundering. "
+            f"The fraud type is: {ft}. "
+            f"Key risk factors: the transaction pattern, amount, and platform context "
+            f"warrant further review under AML/CFT suspicious transaction reporting obligations."
+        )
+    else:
+        assistant_text = (
+            f"This transaction does not show clear indicators of fraud or money laundering "
+            f"based on the available features. No suspicious activity flag is raised."
+        )
+    return [
+        {"role": "user", "content": user_text},
+        {"role": "assistant", "content": assistant_text},
+    ]
+
+
+def convert_neobank(item):
+    """Convert electricsheepafrica/africa-fintech-neobank tabular row to ChatML."""
+    tx_type = item.get("tx_type", "")
+    amt = item.get("amount", "")
+    country = item.get("country", "")
+    plat = item.get("platform", "")
+    fraud_type = item.get("fraud_type", "")
+    label = str(item.get("label", "")).strip()
+    velocity_1h = item.get("velocity_1h", "")
+    velocity_24h = item.get("velocity_24h", "")
+    distinct_receivers = item.get("distinct_receivers_24h", "")
+    user_text = (
+        f"A fintech transaction in {country} via {plat}:\n"
+        f"  Transaction type: {tx_type}\n"
+        f"  Amount: {amt}\n"
+        f"  Velocity (1h): {velocity_1h}\n"
+        f"  Velocity (24h): {velocity_24h}\n"
+        f"  Distinct receivers (24h): {distinct_receivers}\n"
+        f"  Fraud type (if any): {fraud_type}\n"
+        f"  Label: {label}\n\n"
+        f"Based on these features, is this transaction suspicious? "
+        f"Explain your reasoning in terms of money laundering and fraud risk indicators."
+    )
+    if label and label.lower() not in ("0", "false", "no", ""):
+        assistant_text = (
+            f"This transaction shows indicators of potential fraud/money laundering. "
+            f"The fraud type is: {fraud_type}. "
+            f"Key risk factors: the transaction pattern, amount, velocity, and platform context "
+            f"warrant further review under AML/CFT suspicious transaction reporting obligations."
+        )
+    else:
+        assistant_text = (
+            f"This transaction does not show clear indicators of fraud or money laundering "
+            f"based on the available features. No suspicious activity flag is raised."
+        )
+    return [
+        {"role": "user", "content": user_text},
+        {"role": "assistant", "content": assistant_text},
+    ]
+
+
+def convert_nfpc(item):
+    """Convert preetisheoran/nfpc-parquet mule account data to ChatML."""
+    account_id = item.get("account_id", "")
+    is_mule = str(item.get("is_mule", "")).strip()
+    mule_flag_date = item.get("mule_flag_date", "")
+    alert_reason = item.get("alert_reason", "")
+    flagged_by_branch = item.get("flagged_by_branch", "")
+    user_text = (
+        f"Account analysis for {account_id}:\n"
+        f"  Is mule account: {is_mule}\n"
+        f"  Mule flag date: {mule_flag_date}\n"
+        f"  Alert reason: {alert_reason}\n"
+        f"  Flagged by branch: {flagged_by_branch}\n\n"
+        f"Based on these features, is this account involved in money mule activity? "
+        f"Explain your reasoning."
+    )
+    if is_mule and is_mule.lower() not in ("0", "false", "no", ""):
+        assistant_text = (
+            f"This account shows indicators of money mule activity. "
+            f"Mule flag date: {mule_flag_date}. "
+            f"Alert reason: {alert_reason}. "
+            f"This account warrants further investigation under AML/CFT suspicious transaction reporting obligations."
+        )
+    else:
+        assistant_text = (
+            f"This account does not show clear indicators of money mule activity "
+            f"based on the available features. No suspicious activity flag is raised."
+        )
+    return [
+        {"role": "user", "content": user_text},
+        {"role": "assistant", "content": assistant_text},
+    ]
+
+
 def convert_auto(item):
-    """Auto-detect format from item keys."""
+    """Auto-detect format from item keys and produce ChatML message pairs."""
     keys = set(item.keys())
+    # Alpaca-style (instruction/input/output)
     if "instruction" in keys or "input" in keys:
         return convert_alpaca(item, {})
+    # OpenAI chat format (messages list)
     if "messages" in keys:
-        return item["messages"]
-    if "conversation" in keys:
-        conv = item["conversation"]
-        if isinstance(conv, list):
-            return conv
-    return convert_openai(item, {})
+        msgs = item["messages"]
+        # Drop rows where assistant never responds (FinWise has many system+user-only rows)
+        has_user = any(m.get("role") == "user" for m in msgs)
+        has_assistant = any(m.get("role") == "assistant" for m in msgs)
+        if has_user and has_assistant:
+            return msgs
+        return None
+    # FinWise 'text' column with ### USER: / ### ASSISTANT: markers
+    if "text" in keys and "category" in keys:
+        return convert_openai(item, {"content": "text"})
+    # prompt/completion pairs (Azfarhashmi financial-crime-reasoning)
+    if "prompt" in keys and "completion" in keys:
+        prompt = item.get("prompt") or ""
+        completion = item.get("completion") or ""
+        if prompt.strip() and completion.strip():
+            return [
+                {"role": "user", "content": prompt.strip()},
+                {"role": "assistant", "content": completion.strip()},
+            ]
+        return None
+    # AML transaction anomalies (HaseebDev): transaction_pattern/investigator_rationale
+    if "transaction_pattern" in keys and "investigator_rationale" in keys:
+        tp = item.get("transaction_pattern", "").strip()
+        ir = item.get("investigator_rationale", "").strip()
+        if tp and ir:
+            return [
+                {"role": "user", "content": tp},
+                {"role": "assistant", "content": ir},
+            ]
+        return None
+    # KYC sample data (sovereign-forger): narrative bio + risk rating
+    if "narrative_bio" in keys and "kyc_risk_rating" in keys:
+        nb = item.get("narrative_bio", "").strip()
+        rr = item.get("kyc_risk_rating", "").strip()
+        if nb and rr:
+            return [
+                {"role": "user", "content": f"A customer profile: {nb}\n\nAssess the KYC risk rating and explain your reasoning."},
+                {"role": "assistant", "content": f"KYC Risk Rating: {rr}."},
+            ]
+        return None
+    # Tabular fraud data (electricsheepafrica mobile money / neobank): convert features to prose
+    if "fraud_type" in keys and "transaction_amount" in keys and "transaction_type" in keys:
+        return convert_mfraud(item)
+    if "tx_type" in keys and "amount" in keys and "fraud_type" in keys:
+        return convert_neobank(item)
+    # nfpc mule account detection
+    if "account_id" in keys and "is_mule" in keys:
+        return convert_nfpc(item)
+    return None
 
 
 def load_dataset(repo_name, split, max_examples, fmt, fields=None):
@@ -192,7 +383,9 @@ def load_dataset(repo_name, split, max_examples, fmt, fields=None):
 
     for row in rows:
         msgs = converter(row)
-        roles = {m["role"] for m in msgs}
+        if msgs is None:
+            continue
+        roles = {m.get("role", "") for m in msgs}
         if "user" in roles and "assistant" in roles:
             examples.append(msgs)
     return examples
@@ -201,6 +394,8 @@ def load_dataset(repo_name, split, max_examples, fmt, fields=None):
 def main():
     out_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)))
     out_path = os.path.join(out_dir, "training.jsonl")
+    train_path = os.path.join(out_dir, "train.jsonl")
+    test_path = os.path.join(out_dir, "test.jsonl")
 
     if not try_import_hf():
         sys.exit(1)
@@ -231,16 +426,30 @@ def main():
     random.seed(42)
     random.shuffle(all_examples)
 
-    with open(out_path, "w", encoding="utf-8") as f:
-        for ex in all_examples:
-            f.write(json.dumps(ex, ensure_ascii=False))
-            f.write("\n")
-
+    total = len(all_examples)
     print(f"\n{'='*60}")
-    print(f"Written to {out_path}")
-    print(f"Total unique examples: {len(all_examples)}")
+    print(f"Total unique examples: {total}")
+
+    # --- train / test split (90/10) ---
+    split_idx = int(total * 0.9)
+    train_examples = all_examples[:split_idx]
+    test_examples = all_examples[split_idx:]
+
+    for label, path, examples in [
+        ("training.jsonl", out_path, all_examples),
+        ("train.jsonl", train_path, train_examples),
+        ("test.jsonl", test_path, test_examples),
+    ]:
+        with open(path, "w", encoding="utf-8") as f:
+            for ex in examples:
+                f.write(json.dumps(ex, ensure_ascii=False))
+                f.write("\n")
+        print(f"Wrote {path}: {len(examples)} examples")
+
+    print(f"\nDataset breakdown:")
     for ds_config in DATASETS:
-        print(f"  - {ds_config['name']} ({ds_config['repo']})")
+        print(f"  - {ds_config['name']} ({ds_config['repo']}) [{ds_config['max_examples']} max]")
+    print(f"\nTrain: {len(train_examples)} | Test: {len(test_examples)} | Total: {total}")
 
 
 if __name__ == "__main__":

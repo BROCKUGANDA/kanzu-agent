@@ -12,6 +12,8 @@ cd "$HERE"
 
 MODEL="model/Qwen2.5-1.5B-Instruct-Q4_K_M.gguf"
 OUTPUT="model/Kanzu-Qwen2.5-1.5B-Q4_K_M-lora.gguf"
+TEMP_F16="/tmp/kanzu-f16/Qwen2.5-1.5B-Instruct-f16.gguf"
+FINAL_Q4="/tmp/kanzu-f16/Kanzu-f16-Q4_K_M.gguf"
 TRAINING_DATA="training/training.jsonl"
 
 if [ ! -f "$MODEL" ]; then
@@ -24,15 +26,15 @@ if [ ! -f "$TRAINING_DATA" ]; then
     exit 1
 fi
 
-# --- locate llama-cli ---
-LLAMA_CLI="${KANZU_LLAMA_CLI:-./vendor/llama.cpp/build/bin/llama-cli}"
-if command -v "$LLAMA_CLI" >/dev/null 2>&1; then
-    :
-elif [ -f "${LLAMA_CLI}.exe" ]; then
-    LLAMA_CLI="${LLAMA_CLI}.exe"
+# --- locate llama-finetune ---
+LLAMA_FIN="${KANZU_LLAMA_FIN:-./vendor/llama.cpp/build/bin/llama-finetune}"
+if command -v "$LLAMA_FIN" >/dev/null 2>&1; then
+    FIN_CMD="$LLAMA_FIN"
+elif [ -f "${LLAMA_FIN}.exe" ]; then
+    FIN_CMD="${LLAMA_FIN}.exe"
 else
-    echo "error: llama-cli not found at $LLAMA_CLI"
-    echo "  Run scripts/setup_llama_cpp.sh or set KANZU_LLAMA_CLI."
+    echo "error: llama-finetune not found at $LLAMA_FIN"
+    echo "  Run scripts/setup_llama_cpp.sh or set KANZU_LLAMA_FIN."
     exit 1
 fi
 
@@ -54,21 +56,37 @@ echo "  Context:     2048"
 echo ""
 
 # --- train ---
-"$LLAMA_CLI" train-text-lora \
+# This llama.cpp version provides 'llama-finetune' as a standalone binary.
+# It is invoked directly (no subcommand). It performs full fine-tuning.
+# Key flags:
+#   -m  model path
+#   -f  training data file (JSONL, one ChatML doc per line)
+#   -c  context size
+#   -t  threads
+#   -epochs  number of epochs (default 2)
+#   -lr  learning rate
+#   -opt  optimizer (adamw or sgd)
+#   -wd  weight decay
+#   -val-split  validation split fraction
+#   -o / --output  output file path
+# LoRA flags (--lora-r, --lora-alpha, --out-lora, --out-tied) are NOT available.
+# This script runs full fine-tuning as the available option.
+"$FIN_CMD" \
     -m "$MODEL" \
     -f "$TRAINING_DATA" \
     -c 2048 \
-    --lora-r 16 \
-    --lora-alpha 32 \
-    --epoch 2 \
-    --lr 2e-4 \
-    --cut-off 256 \
     -t "$THREADS" \
-    --out-lora "training/kanzu-lora.bin" \
-    --out-tied "$OUTPUT" 2>&1 || {
+    -epochs 2 \
+    -lr 2e-5 \
+    -opt adamw \
+    -wd 0.01 \
+    -val-split 0.05 \
+    -o "$OUTPUT" 2>&1 || {
     echo ""
-    echo "If train-text-lora is not available, rebuild llama.cpp with:"
-    echo "  cmake -DLLAMA_BUILD_EXAMPLES=ON .. && cmake --build . --target train-text-lora"
+    echo "Training failed. llama-finetune ran but exited non-zero."
+    echo "Check training output above for errors."
+    echo "This llama.cpp version only supports full fine-tuning, not LoRA."
+    echo "To try LoRA, a different llama.cpp build or external tooling is needed."
     exit 1
 }
 

@@ -114,9 +114,20 @@ func Resolve(pref string) (string, error) {
 		candidates = append(candidates, pref)
 	}
 	candidates = append(candidates,
-		"llama-cli",                              // current upstream
-		"llama.cpp-cli",                          // some distro packages
-		"./vendor/llama.cpp/build/bin/llama-cli", // scripts/setup_llama_cpp.sh
+		// Try llama-completion first when on Windows: the official prebuilt
+		// win-cpu-x64 releases ship llama-completion.exe which reliably loads,
+		// whereas llama-cli.exe in those same releases can fail to start due to
+		// how its multi-binary wrapper resolves DLLs.
+		"./vendor/llama.cpp/build/bin/llama-completion",
+		"./vendor/llama.cpp/build/bin/llama-completion.exe",
+		"llama-completion",
+		"llama-completion.exe",
+		"llama-cli",
+		"llama-cli.exe",
+		"llama.cpp-cli",
+		"llama.cpp-cli.exe",
+		"./vendor/llama.cpp/build/bin/llama-cli",
+		"./vendor/llama.cpp/build/bin/llama-cli.exe",
 	)
 	// The pre-2024 upstream binary was named `main`, but on Windows a bare
 	// `main` resolves through PATHEXT to system applets such as main.cpl,
@@ -129,31 +140,50 @@ func Resolve(pref string) (string, error) {
 	}
 	for _, c := range candidates {
 		if strings.ContainsAny(c, `/\`) {
+			abs := c
 			if st, err := os.Stat(c); err == nil && !st.IsDir() {
-				abs, err := filepath.Abs(c)
-				if err == nil {
+				if a, err := filepath.Abs(c); err == nil {
+					abs = a
+				}
+				if probeRuns(abs) {
 					return abs, nil
 				}
-				return c, nil
 			}
 			// Windows: the same relative candidate may also exist as name.exe.
 			if runtime.GOOS == "windows" && filepath.Ext(c) == "" {
-				if st, err := os.Stat(c + ".exe"); err == nil && !st.IsDir() {
-					abs, err := filepath.Abs(c + ".exe")
-					if err == nil {
-						return abs, nil
+				withExt := c + ".exe"
+				if st, err := os.Stat(withExt); err == nil && !st.IsDir() {
+					if a, err := filepath.Abs(withExt); err == nil {
+						withExt = a
 					}
-					return c + ".exe", nil
+					if probeRuns(withExt) {
+						return withExt, nil
+					}
 				}
 			}
 			continue
 		}
-		if p, err := exec.LookPath(c); err == nil {
+		if p, err := exec.LookPath(c); err == nil && probeRuns(p) {
 			return p, nil
 		}
 	}
 	return "", fmt.Errorf("%w: tried %s. Build it with scripts/setup_llama_cpp.sh, or set KANZU_LLAMA_CLI",
 		ErrNoBinary, strings.Join(candidates, ", "))
+}
+
+// probeRuns executes `bin --help` and returns true if the process starts and
+// produces any output (exit code is ignored — many llama.cpp builds exit
+// non-zero on --help). Returns false if the process cannot be launched at all,
+// which happens when required DLLs are missing on Windows.
+func probeRuns(bin string) bool {
+	ctx, cancel := context.WithTimeout(context.Background(), 8*time.Second)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, bin, "--help")
+	var out bytes.Buffer
+	cmd.Stdout = &out
+	cmd.Stderr = &out
+	_ = cmd.Run()
+	return strings.TrimSpace(out.String()) != ""
 }
 
 // capabilities parses `llama-cli --help` once and records which flags the local
