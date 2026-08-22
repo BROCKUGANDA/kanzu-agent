@@ -50,6 +50,14 @@ DATASETS = [
         "format": "auto",
     },
     {
+        "name": "banking-finance-qa",
+        "repo": "RakeshMadasani/banking-finance-qa-dataset",
+        "split": "train",
+        "fields": None,
+        "max_examples": 1500,
+        "format": "auto",
+    },
+    {
         "name": "finwise-dialogue",
         "repo": "SaiPavankumar22/FinWise",
         "split": "train",
@@ -70,7 +78,7 @@ DATASETS = [
         "repo": "electricsheepafrica/africa-mobile-money-fraud-dataset",
         "split": "train",
         "fields": None,
-        "max_examples": 200,
+        "max_examples": 300,
         "format": "auto",
     },
     {
@@ -78,7 +86,7 @@ DATASETS = [
         "repo": "electricsheepafrica/africa-fintech-neobank-dataset",
         "split": "train",
         "fields": None,
-        "max_examples": 200,
+        "max_examples": 300,
         "format": "auto",
     },
     {
@@ -95,6 +103,14 @@ DATASETS = [
         "split": "train",
         "fields": None,
         "max_examples": 100,
+        "format": "auto",
+    },
+    {
+        "name": "vynfi-sar-narratives",
+        "repo": "VynFi/vynfi-sar-narratives",
+        "split": "train",
+        "fields": None,
+        "max_examples": 200,
         "format": "auto",
     },
 ]
