@@ -53,9 +53,10 @@ var languages = []i18n.Lang{i18n.EN, i18n.SW, i18n.LG}
 // App is the Bubble Tea model for the Kanzu chat interface.
 type App struct {
 	// injected
-	runAgent AgentFunc
-	ctx      context.Context
-	cancel   context.CancelFunc
+	runAgent  AgentFunc
+	providers Providers
+	ctx       context.Context
+	cancel    context.CancelFunc
 
 	// layout
 	width  int
@@ -69,10 +70,15 @@ type App struct {
 	input    textarea.Model
 	busy     bool
 	err      error
+
+	// non-chat sections
+	sections []sectionState
+	scanDays int
 }
 
-// NewApp constructs the App. Pass the real runAgent function from cmd/kanzu.
-func NewApp(fn AgentFunc) *App {
+// NewApp constructs the App. Pass the real runAgent function from cmd/kanzu,
+// plus the read-only section providers (any of which may be nil).
+func NewApp(fn AgentFunc, p Providers) *App {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	ta := textarea.New()
@@ -88,11 +94,14 @@ func NewApp(fn AgentFunc) *App {
 	vp := viewport.New(80, 20)
 
 	return &App{
-		runAgent: fn,
-		ctx:      ctx,
-		cancel:   cancel,
-		input:    ta,
-		viewport: vp,
+		runAgent:  fn,
+		providers: p,
+		ctx:       ctx,
+		cancel:    cancel,
+		input:     ta,
+		viewport:  vp,
+		sections:  make([]sectionState, secCount),
+		scanDays:  7,
 		messages: []ChatMessage{
 			{
 				Role: RoleAgent,
@@ -149,6 +158,23 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		a.viewport.GotoBottom()
 		return a, nil
 
+	case sectionLoadedMsg:
+		if m.section >= 0 && m.section < len(a.sections) {
+			a.sections[m.section] = sectionState{
+				loaded:  true,
+				loading: false,
+				err:     m.err,
+				alerts:  m.alerts,
+				cases:   m.cases,
+				members: m.members,
+				inbox:   m.inbox,
+				kb:      m.kb,
+				policy:  m.policy,
+				doctor:  m.doctor,
+			}
+		}
+		return a, nil
+
 	case tea.KeyMsg:
 		switch m.String() {
 		case "ctrl+c":
@@ -165,10 +191,27 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return a, nil
 
 		case "tab":
-			a.navIdx = (a.navIdx + 1) % len(navItems)
-			a.input.Focus()
-			a.refreshViewport()
-			return a, textarea.Blink
+			return a, a.gotoSection((a.navIdx + 1) % len(navItems))
+
+		case "shift+tab":
+			return a, a.gotoSection((a.navIdx - 1 + len(navItems)) % len(navItems))
+
+		case "1", "2", "3", "4", "5", "6", "7", "8":
+			// Direct section jump — only when the chat input is not capturing.
+			if a.navIdx != SecChat {
+				return a, a.gotoSection(int(m.String()[0] - '1'))
+			}
+
+		case "r", "R":
+			// Refresh the active section (chat has nothing to refresh).
+			if a.navIdx != SecChat {
+				return a, a.reloadSection(a.navIdx)
+			}
+
+		case "ctrl+r":
+			if a.navIdx != SecChat {
+				return a, a.reloadSection(a.navIdx)
+			}
 
 		case "ctrl+l":
 			a.langIdx = (a.langIdx + 1) % len(languages)
@@ -176,6 +219,9 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return a, nil
 
 		case "enter":
+			if a.navIdx != SecChat {
+				return a, nil
+			}
 			if a.busy {
 				return a, nil
 			}
@@ -211,6 +257,13 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	}
 
+	// Only the chat section owns the textarea; other sections are read-only
+	// views, so keys must not be swallowed by the input.
+	if a.navIdx != SecChat {
+		a.viewport, _ = a.viewport.Update(msg)
+		return a, nil
+	}
+
 	var cmd tea.Cmd
 	a.input, cmd = a.input.Update(msg)
 
@@ -219,6 +272,30 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		a.viewport, _ = a.viewport.Update(msg)
 	}
 	return a, cmd
+}
+
+// gotoSection switches the active section, loading its snapshot on first visit.
+func (a *App) gotoSection(idx int) tea.Cmd {
+	a.navIdx = idx
+	if idx == SecChat {
+		a.input.Focus()
+		a.refreshViewport()
+		return textarea.Blink
+	}
+	a.input.Blur()
+	if a.sections[idx].loaded || a.sections[idx].loading {
+		return nil
+	}
+	return a.reloadSection(idx)
+}
+
+// reloadSection forces a refetch of one section.
+func (a *App) reloadSection(idx int) tea.Cmd {
+	if idx <= SecChat || idx >= len(a.sections) {
+		return nil
+	}
+	a.sections[idx] = sectionState{loading: true}
+	return a.loadSection(idx)
 }
 
 // ── view ──────────────────────────────────────────────────────────────────────
@@ -266,6 +343,8 @@ func (a *App) renderSidebar() string {
 
 	// Help
 	b.WriteString(MutedStyle.Render("  Tab   next section") + "\n")
+	b.WriteString(MutedStyle.Render("  1-8   jump section") + "\n")
+	b.WriteString(MutedStyle.Render("  r     refresh view") + "\n")
 	b.WriteString(MutedStyle.Render("  Esc   quit") + "\n")
 
 	return SidebarStyle.Width(28).Height(a.height).Render(b.String())
@@ -278,6 +357,7 @@ func (a *App) renderContent() string {
 	}
 
 	// ── header ──
+	title, subtitle := sectionHeading(a.navIdx)
 	header := lipgloss.NewStyle().
 		Width(w).
 		BorderBottom(true).
@@ -286,11 +366,31 @@ func (a *App) renderContent() string {
 		Padding(0, 1).
 		Render(
 			lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color(Navy)).
-				Render("SACCO Compliance Chat") +
-				"  " + MutedStyle.Render("Kampala Central") +
-				"  " + OfflineStyle.Render("● Offline") +
-				"  " + MutedStyle.Render("10 rules"),
+				Render(title) +
+				"  " + MutedStyle.Render(subtitle) +
+				"  " + OfflineStyle.Render("● Offline"),
 		)
+
+	// ── non-chat sections: read-only tables ──
+	if a.navIdx != SecChat {
+		rows := a.height - 8
+		if rows < 4 {
+			rows = 4
+		}
+		body := a.renderSection(w, rows)
+		footer := MutedStyle.Render(
+			"  Tab/Shift+Tab section  •  1-8 jump  •  r refresh  •  Esc quit")
+		return lipgloss.NewStyle().
+			Width(w).
+			Padding(0, 1).
+			Render(lipgloss.JoinVertical(lipgloss.Left,
+				header,
+				"",
+				body,
+				"",
+				footer,
+			))
+	}
 
 	// ── thread (viewport) ──
 	a.viewport.Width = w

@@ -530,6 +530,36 @@ func (d *DB) OpenCase(ctx context.Context, c Case, alertIDs []int64) (int64, err
 	return id, nil
 }
 
+// RecentCases returns the most recently opened draft cases, newest first.
+// limit <= 0 means "no limit".
+func (d *DB) RecentCases(ctx context.Context, limit int) ([]Case, error) {
+	q := `SELECT id, member_id, title, lang, status, narrative, citations, opened_at
+	      FROM cases ORDER BY id DESC`
+	args := []interface{}{}
+	if limit > 0 {
+		q += ` LIMIT ?`
+		args = append(args, limit)
+	}
+	rows, err := d.sql.QueryContext(ctx, q, args...)
+	if err != nil {
+		return nil, fmt.Errorf("query cases: %w", err)
+	}
+	defer rows.Close()
+
+	var out []Case
+	for rows.Next() {
+		var c Case
+		var opened string
+		if err := rows.Scan(&c.ID, &c.MemberID, &c.Title, &c.Lang, &c.Status,
+			&c.Narrative, &c.Citations, &opened); err != nil {
+			return nil, fmt.Errorf("scan case: %w", err)
+		}
+		c.OpenedAt = parseTS(opened)
+		out = append(out, c)
+	}
+	return out, rows.Err()
+}
+
 // ── offline message queue ────────────────────────────────────────────────────
 
 // Enqueue stores an inbound request or an outbound reply.

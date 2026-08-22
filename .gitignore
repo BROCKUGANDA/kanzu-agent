@@ -27,10 +27,13 @@ var/prompts/prompt-[0-9]*.txt
 data/kanzu.db*
 
 # ── Go build artefacts ───────────────────────────────────────────────────────
+# NOTE: the binary patterns are anchored with a leading slash on purpose.
+# An unanchored `kanzu` also matches the cmd/kanzu/ source directory, which
+# silently excluded cmd/kanzu/main.go from the repository.
 bin/
 dist/
-kanzu
-kanzu.exe
+/kanzu
+/kanzu.exe
 *.test
 *.out
 coverage.txt
