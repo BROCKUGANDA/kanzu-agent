@@ -1,15 +1,21 @@
-Demo narration script for Kanzu Agent — ADTC 2026 submission
-Target: ~2 minutes / ~300 words at natural 150 wpm pace.
-Speaker: Okot Araa Andrew Aaron Otema, team BROCKUGANDA.
+Demo narration script - precisely timed for 2:00 (120s)
+Total target word count: ~280 words at 140 wpm with pauses
+Speaker: Okot Araa Andrew Aaron Otema, team BROCKUGANDA
 
-[0:00] Hello, I'm Okot from Kampala — and this is Kanzu Agent, an offline compliance copilot for Ugandan SACCOs. Savings cooperatives across East Africa must file AML reports to the Financial Intelligence Authority, but most have no dedicated staff and patchy internet. Kanzu runs 100% on-device on a 1.5-billion-parameter GGUF model.
+[0:00 - 0:12] Title card
+"Hello, I'm Okot from Kampala. This is Kanzu Agent—an offline AML compliance copilot for Ugandan SACCOs."
 
-[0:12] The Go rule engine enforces eight FATF-aligned typologies calibrated to Ugandan thresholds — UGX 28 million reporting ceiling, UGX 5.6 million daily KYC limit. The model never adjudicates risk; it only decomposes natural-language requests into rule calls and narrates the findings trilingually.
+[0:12 - 0:20] Doctor
+"Run kanzu doctor. All checks pass: model loaded, llama.cpp runtime, trilingual support, 100% offline."
 
-[0:28] Let me show you. Running "kanzu doctor" — all checks green: model present, llama.cpp responds, ledger seeded, zero-network verified inside an unshare namespace. Now an English query: flag suspicious transactions and draft a compliance note. The ledger returns last week's activity; rule R01 fires on structuring — five deposits of 6.72 million shillings totaling 33.6 million. Generation: 12.58 tokens per second, 1.7 gigabytes peak memory.
+[0:20 - 0:56] English demo
+"English mode. 'Flag suspicious transactions from last week.' Kanzu detects three high-risk transactions totaling 2.4 million UGX, and drafts a compliance recommendation for the savings committee."
 
-[0:56] Kiswahili: "Chunguza miamala ya wiki hii." Same ledger, same rules, response in Kiswahili with UGX amounts and an AMLA Section 47 citation. This branch officer in Arua gets a complete SAR-ready narrative with no English intermediary.
+[0:56 - 1:18] Kiswahili demo
+"Kiswahili. 'Chunguza miamala ya wiki hii.' Response: 'Imethamriwa 13 nyenzo zafedha katika miamala 7 hadi 14 ya Novemba...' Three key alerts flagged."
 
-[1:12] Luganda: "Kebera ebyenfuna bya mwezi." Retrieval pulls KB citations from our Luganda compliance corpus. The model renders a structured risk narrative in 96 tokens.
+[1:18 - 1:35] Luganda demo
+"Luganda. 'Kebera ebyenfuna bya mwezi.' Response: 'Ebyenfuna 15 bya Novemba 2025...' Five suspicious items identified."
 
-[1:25] The ADTC profiler measures 0.76 accuracy on arc-easy, 12.58 tokens-per-second generation, thermal throttling at zero. Full results are in submission.json, the code is open at github.com/BROCKUGANDA/kanzu-agent under MIT. Thank you and Karibu tena.
+[1:35 - 2:00] Profiler
+"The ADTC profiler confirms: 12.58 tokens per second, accuracy 0.76 on arc_easy, seed 42, commit 8b8e8902fe88. All requirements met. Thank you."
