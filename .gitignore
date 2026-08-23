@@ -55,7 +55,11 @@ __pycache__/
 .venv/
 .uv-cache/
 
-# ── Editors / OS ─────────────────────────────────────────────────────────────
+# ── Demo artifacts (regenerable intermediates) ─────────────────────────────────
+docs/demo/frames/*.png
+docs/demo/frames/concat.txt
+docs/demo/*_novid.*
+
 .DS_Store
 Thumbs.db
 .idea/
