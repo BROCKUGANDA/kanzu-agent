@@ -442,14 +442,24 @@ internal/rag/   — SQLite FTS5 queries
 ### 8.3 CLI Usage
 
 ```bash
-# English
+# English (both flag positions work)
 kanzu ask "flag suspicious transactions this week and draft a compliance note for the committee"
+kanzu -lang en ask "flag suspicious transactions this week"
 
 # Kiswahili
 kanzu ask -lang sw "chunguza miamala ya kutiliwa shaka wiki hii"
+kanzu -lang sw ask "chunguza miamala ya kutiliwa shaka wiki hii"
 
 # Luganda
 kanzu ask -lang lg "kebera ebyenfuna eby'obucwezi sabbiiti eno"
+kanzu -lang lg ask "kebera ebyenfuna eby'obucwezi sabbiiti eno"
+
+# Other commands (flags can appear before or after subcommand)
+kanzu scan -days 7
+kanzu -lang sw report -days 14
+kanzu doctor
+kanzu scan -days 7 -no-model
+kanzu chat
 ```
 
 ### 8.4 Luganda — African Alpha Claim
@@ -634,6 +644,10 @@ and the broader East Africa region:
 | `kanzu doctor` — all green | ✅ (thermal: warn on Windows, ok on Linux) |
 | Live inference English | ✅ Tested — UGX, Ugandan member names |
 | Live inference Kiswahili | ✅ `kanzu ask -lang sw "chunguza miamala..."` |
+| Live inference Luganda | ✅ `kanzu ask -lang lg "kebera ebyenfuna..."` |
+| CLI flag parsing (both positions) | ✅ `kanzu -lang sw ask` & `ask -lang sw` |
 | Zero network at runtime | ✅ `verify_offline.sh` passes inside `unshare -n` |
 | ADTC profiler → `submission.json` on Standard Laptop | ⚠️ Run before submission |
 | Demo video ≤ 2 min | ⚠️ Record before submission |
+| Docker image builds (linux/amd64) | ✅ Verified with llama.cpp b10580 + Python 3.11 |
+| `docker run kanzu-agent:latest doctor` | ✅ All checks pass in container |
