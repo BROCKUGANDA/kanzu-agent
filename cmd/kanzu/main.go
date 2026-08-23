@@ -36,11 +36,18 @@ import (
 
 const usage = `kanzu — offline compliance copilot for savings groups and micro-SMEs
 
-usage: kanzu <command> [flags]
+usage: kanzu [global flags] <command> [command flags]
+       kanzu <command> [global flags] [command flags]
+
+global flags (also available as KANZU_* environment variables):
+  -lang en|sw|lg    Operator language (default en)
+  -planner rules|hybrid  Plan source; hybrid lets the model refine a validated plan
+  -threads N           llama.cpp thread count (default: cores-1, capped at 4)
+  -db PATH             Ledger location
 
 commands:
   init                 Build the local ledger from fixtures/ and index knowledge/
-  chat                 Interactive terminal session
+  chat                 Interactive terminal session (Bubble Tea TUI)
   ask   "<request>"    Run one request and exit
   scan                 Run the deterministic rule engine only (no model)
   report               Draft a suspicious-activity note for a window
@@ -52,17 +59,13 @@ commands:
   bench                Measure end-to-end agent throughput locally
   version              Print version information
 
-global flags (also available as KANZU_* environment variables):
-  -lang en|sw          Operator language (default en)
-  -planner rules|hybrid  Plan source; hybrid lets the model refine a validated plan
-  -threads N           llama.cpp thread count (default: cores-1, capped at 4)
-  -db PATH             Ledger location
-
 examples:
   kanzu init
   kanzu ask "flag suspicious transactions this week and draft a compliance note"
   kanzu -lang sw ask "chunguza miamala ya kutiliwa shaka wiki hii"
+  kanzu ask "chunguza miamala" -lang sw
   kanzu scan -days 7
+  kanzu -lang lg report -days 14
 `
 
 func main() {
