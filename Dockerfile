@@ -53,21 +53,29 @@ FROM debian:bookworm-slim AS runtime
 # Install the llama.cpp CPU-only binaries from the official GitHub release.
 # Pin the exact build tag that was tested (b10580) so the image is reproducible.
 # The Linux CPU asset is a .tar.gz (the .zip assets are Windows-only), and recent
-# builds are dynamically linked, so the shared objects must be installed too.
+# builds are dynamically linked, so the *.so files must be installed too.
 ARG LLAMA_TAG=b10580
 ARG LLAMA_URL=https://github.com/ggml-org/llama.cpp/releases/download/${LLAMA_TAG}/llama-${LLAMA_TAG}-bin-ubuntu-x64.tar.gz
 
+# Install llama.cpp runtime dependencies and Python for the ADTC profiler.
 RUN apt-get update -qq && \
     apt-get install -y --no-install-recommends \
         ca-certificates \
         curl \
-        libgomp1 && \
+        libgomp1 \
+        python3 \
+        python3-pip \
+        python3-venv && \
     rm -rf /var/lib/apt/lists/*
 
 # set -eux plus a final --version probe means a bad URL or a missing shared
 # library fails the build loudly instead of silently shipping a model-less image.
+# Retry curl up to 3 times with exponential backoff for transient HTTP/2 errors.
 RUN set -eux; \
-    curl -fsSL "${LLAMA_URL}" -o /tmp/llama.tar.gz; \
+    for i in 1 2 3; do \
+        curl -fsSL "${LLAMA_URL}" -o /tmp/llama.tar.gz && break || \
+        (echo "Attempt $i failed, retrying in 5s..." && sleep 5); \
+    done; \
     mkdir -p /tmp/llama; \
     tar -xzf /tmp/llama.tar.gz -C /tmp/llama; \
     find /tmp/llama -type f -name '*.so*' -exec install -m 0755 {} /usr/local/lib/ \; ; \

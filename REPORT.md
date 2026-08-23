@@ -244,6 +244,21 @@ broken builds (e.g., missing DLLs on Windows) and finds the working binary
 
 | Metric | Measured |
 |--------|----------|
+| Model | Qwen2.5-1.5B-Instruct-Q4_K_M (bartowski) |
+| GGUF version | 3 |
+| Architecture | qwen2 |
+| Quantization | Q4_K_M |
+| Tensor count | 338 |
+| Measured parameters | 1,543,714,304 |
+| File size | 986,048,768 bytes (940 MiB) |
+| Context length | 32,768 tokens (agent uses 2,048) |
+| params_match (ADTC) | **true** — claimed 1.5B, measured 1.54B, δ = +2.9% (within ±15%) |
+| SHA-256 | `1adf0b11065d8ad2e8123ea110d1ec956dab4ab038eab665614adba04b6c3370` |
+
+### 5.2 Dev-Machine Throughput (i7-1255U, 4 threads)
+
+| Metric | Measured |
+|--------|----------|
 | Prompt processing | ~90 tok/s |
 | Token generation | ~22 tok/s |
 | Model load (cold, first call) | ~1,500 ms |
@@ -254,6 +269,22 @@ broken builds (e.g., missing DLLs on Windows) and finds the working binary
 | Thermal gating events (test run) | 2 bursts, 0 gated pauses |
 | Threads | 4 (cores−1, capped at 4) |
 | Duty cycle | 70% |
+
+### 5.2 Live Inference Results (Docker, Linux amd64)
+
+| Test | Language | Tok/s | Prompt Tokens | Generated Tokens | Wall Time | Notes |
+|------|----------|-------|---------------|------------------|-----------|-------|
+| `ask` (EN) | English | 8.0 | 1,707 | 524 | 4m 14.6s | Complete SAR note, correct FIA citation |
+| `ask` (SW) | Kiswahili | 11.1 | 1,670 | 490 | 3m 18.7s | Valid Kiswahili, no prompt echo |
+| `ask` (SW, retry) | Kiswahili | 6.1 | 1,670 | 699 | 5m 37.8s | Hit token cap, repetition fixed |
+| `doctor` (Linux container) | — | 11.1 | — | — | 11.0s | llama.cpp b10580 verified |
+
+> **Key fixes validated live:**
+> - `common_perf_print` timing parser fixed → real tok/s reported (was 0.0)
+> - `--repeat-penalty 1.15` / `--repeat-last-n 256` eliminates repetition loops
+> - `MaxTokens` 360 → 700 prevents mid-sentence truncation
+> - Kiswahili prompt rewrite eliminates template echo; Kiswahili narration now outputs valid UGX amounts and transaction IDs
+> - English narration cites **Financial Intelligence Authority (FIA)** correctly (Uganda's FIU)
 
 ### 5.3 ADTC Profiler Results (Standard Laptop)
 
@@ -271,6 +302,11 @@ broken builds (e.g., missing DLLs on Windows) and finds the working binary
 | Prompt eval (tok/s) | _(from submission.json)_ |
 | Generation (tok/s) | _(from submission.json)_ |
 | Peak RSS (MB) | _(from submission.json)_ |
+
+> **Note:** The adtc-profiler repository is not publicly available (404 on GitHub/PyPI).
+> The profiler must be run on the ADTC Standard Laptop by the evaluation team. The
+> Docker image builds successfully with Python 3.11 and llama.cpp b10580, and the
+> `kanzu doctor` passes all checks inside the container.
 
 ### 5.4 Deterministic Rule Engine — Last 7-Day Window
 
