@@ -172,7 +172,10 @@ func Load() (*Config, error) {
 		LlamaCLI:          firstNonEmpty(meta.Kanzu.InferenceBinary, "llama-cli"),
 		Lang:              "en",
 		ContextTokens:     orInt(meta.Kanzu.ContextTokens, 2048),
-		MaxTokens:         360,
+		// 360 truncated a multi-finding SAR note mid-sentence. With
+		// _kanzu.context_tokens at 4096 there is headroom for a complete
+		// note; override per run with KANZU_MAX_TOKENS.
+		MaxTokens:         700,
 		PromptBudgetChars: 3000,
 		Seed:              42,
 		Temperature:       0.25,

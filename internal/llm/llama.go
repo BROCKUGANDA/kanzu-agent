@@ -42,6 +42,11 @@ type Request struct {
 	Temperature float64
 	TopP        float64
 	Seed        int
+	// RepeatPenalty and RepeatLastN suppress the degenerate repetition loops the
+	// 1.5B model falls into on long evidence blocks. Zero means "use the
+	// defaults applied in Generate".
+	RepeatPenalty float64
+	RepeatLastN   int
 	// Label appears in the audit trail so a reviewer can tell a plan call from a
 	// narration call.
 	Label string
@@ -213,6 +218,7 @@ func (r *Runner) capabilities() (map[string]bool, error) {
 			"-no-cnv", "--no-conversation", "--no-display-prompt", "--no-warmup",
 			"-ngl", "--n-gpu-layers", "--top-p", "--temp", "--seed", "-ub",
 			"--ubatch-size", "--simple-io", "-st", "--single-turn", "--no-perf",
+			"--repeat-penalty", "--repeat-last-n",
 		} {
 			if strings.Contains(text, flag) {
 				caps[flag] = true
@@ -254,6 +260,14 @@ func (r *Runner) Generate(ctx context.Context, req Request) (*Result, error) {
 	if req.TopP <= 0 {
 		req.TopP = 0.9
 	}
+	if req.RepeatPenalty <= 0 {
+		req.RepeatPenalty = 1.15
+	}
+	if req.RepeatLastN <= 0 {
+		// Wider than a single finding so the penalty spans a restated block
+		// rather than only adjacent tokens.
+		req.RepeatLastN = 256
+	}
 	if strings.TrimSpace(req.Prompt) == "" {
 		return nil, errors.New("empty prompt")
 	}
@@ -286,6 +300,18 @@ func (r *Runner) Generate(ctx context.Context, req Request) (*Result, error) {
 	// the most compute-dense phase and the one that actually pushes core temp up.
 	if caps["-ub"] || caps["--ubatch-size"] {
 		args = append(args, "-ub", strconv.Itoa(r.MicroBatch))
+	}
+	// llama.cpp defaults --repeat-penalty to 1.0, i.e. disabled. Left off, the
+	// 1.5B model degenerates into a repetition loop when narrating a long
+	// evidence block — most visibly in Kiswahili and Luganda, where it restated
+	// the same finding for consecutive transaction ids until it hit the token
+	// cap. A mild penalty over a window wider than one finding stops that
+	// without distorting the figures, which are copied from EVIDENCE.
+	if caps["--repeat-penalty"] {
+		args = append(args, "--repeat-penalty", trimFloat(req.RepeatPenalty))
+		if caps["--repeat-last-n"] {
+			args = append(args, "--repeat-last-n", strconv.Itoa(req.RepeatLastN))
+		}
 	}
 	if caps["-no-cnv"] {
 		args = append(args, "-no-cnv")
@@ -385,8 +411,15 @@ func cleanCompletion(s string) string {
 // Line-based rather than one big regex because "prompt eval time" contains
 // "eval time" as a substring: a naive pattern silently reports prompt-processing
 // speed as generation speed, which would inflate our headline TPS number.
-// Handles both the current `llama_perf_context_print:` prefix and the older
-// `llama_print_timings:`.
+//
+// The emitting symbol has been renamed repeatedly upstream — `llama_print_timings:`
+// (legacy), `llama_perf_context_print:`, and `common_perf_print:` on the b10580
+// build we pin — and newer builds also prepend a timestamp and log level. The
+// gate therefore matches on "perf" or "print_timings" anywhere in the prefix
+// rather than on any single symbol name; note that `llama_perf_context_print`
+// does NOT contain the literal "perf_print". Being too strict here silently
+// reports 0 tok/s, understating a scored ADTC metric. Over-matching the prefix
+// is harmless because the body switch below is exact.
 func parsePerf(stderr string, out *Result) {
 	for _, raw := range strings.Split(stderr, "\n") {
 		line := strings.TrimSpace(raw)
@@ -395,7 +428,8 @@ func parsePerf(stderr string, out *Result) {
 			continue
 		}
 		prefix := line[:colon]
-		if !strings.Contains(prefix, "llama_perf") && !strings.Contains(prefix, "llama_print_timings") {
+		if !strings.Contains(prefix, "perf") &&
+			!strings.Contains(prefix, "print_timings") {
 			continue
 		}
 		body := strings.TrimSpace(line[colon+1:])
