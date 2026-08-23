@@ -144,13 +144,33 @@ jobs:
 
       - name: Verify no hardcoded KES / Kenya references
         run: |
-          if grep -rn '\bKES\b\|SACCO ya Kenya\|Kenyan SACCO' \
-              cmd/ internal/ knowledge/ fixtures/ metadata.json submission.json \
-              --include='*.go' --include='*.md' --include='*.json' --include='*.csv'; then
-            echo "FAIL: Found Kenya/KES references — submission is Uganda/UGX"
+          # var/prompts/ is included on purpose: the six versioned system
+          # prompts ship in the image, and a stale "SACCO ya Kenya" in
+          # prompt-planning-sw.txt once slipped past this check because the
+          # directory was not scanned.
+          if grep -rn '\bKES\b\|Kenya\|Kenyan\|Financial Reporting Centre\|SASRA' \
+              cmd/ internal/ knowledge/ fixtures/ var/prompts/ \
+              metadata.json submission.json \
+              --include='*.go' --include='*.md' --include='*.json' \
+              --include='*.csv' --include='*.txt'; then
+            echo "FAIL: Found Kenya/KES references — submission is Uganda/UGX/FIA"
             exit 1
           fi
-          echo "✓ No KES/Kenya references in source"
+          echo "✓ No KES/Kenya references in source or prompt templates"
+
+      - name: Verify the six versioned prompt templates are present and non-empty
+        run: |
+          missing=0
+          for f in planning-en planning-sw planning-lg \
+                   narration-en narration-sw narration-lg; do
+            p="var/prompts/prompt-$f.txt"
+            if [ ! -s "$p" ]; then
+              echo "FAIL: $p is missing or empty"
+              missing=1
+            fi
+          done
+          [ "$missing" -eq 0 ] || exit 1
+          echo "✓ All six prompt templates present and non-empty"
 
   # ── 5. Docker build (PR and branch pushes — no push to registry) ───────────
   docker-build:

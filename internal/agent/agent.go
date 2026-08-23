@@ -489,20 +489,29 @@ func joinMax(ids []string, n int) string {
 }
 
 // taskInstruction states what the model must produce, per intent and language.
+//
+// The Kiswahili and Luganda variants end with an explicit opening anchor
+// ("start your answer with the word X"). Qwen2.5-1.5B follows English
+// instructions reliably, but in a lower-resource language it tends to continue
+// a structured template by restating it rather than filling it in. Naming the
+// first token it must emit converts an ambiguous "here is a form" into an
+// unambiguous continuation and stops the echo.
 func taskInstruction(intent Intent, lang i18n.Lang, request string) string {
 	sw := lang == i18n.SW
 	lg := lang == i18n.LG
 	switch intent {
 	case IntentReport:
 		if lg {
-			return `Wandiika PPAPULA Y'EMIRIMU EGIRWAMU ENSOBI eri ekibiina ky'SACCO, mu Luganda, mu ngeri eno:
+			return `Wandiika PPAPULA Y'EBIKOLWA EBITEEBEREZEBWA eri akakiiko ka SACCO, mu Luganda, mu ngeri eno:
 
-OBUGUMBA: jumlaa bbiri ezibikkula ebyarabika.
-EBIRABIKA: aya emu ku buli F# — entegeka, omuwendo, n'okiragira okukebera.
-OMUKWANO: jumlaa emu oba bbiri ziva mu SOURCES, n'okutaja ensibuko.
-EBIKOLWA: ebikolwa bisatu ebisobbola omukungu w'amateeka.
+OBUFUNZE: sentensi bbiri eziraga ekyazuuliddwa.
+EBIRABIKA: akatundu kamu ku buli F# — engeri, omuwendo, n'ensonga lwaki kyetaagisa okukeberwa.
+OBUVUNAANYIZIBWA: sentensi emu oba bbiri okuva mu SOURCES, ng'oyogera ensibuko.
+EMITENDERA: emitendera esatu egy'omukungu w'amateeka.
 
-Kopy amannya n'obubonero bw'ebyenfuna ng'biri mu EVIDENCE.`
+Ddamu emiwendo n'obubonero bw'ebyenfuna nga bwe biri mu EVIDENCE.
+Tandika eky'oddamu na kigambo OBUFUNZE: era ojjuze ebitundu byonna.
+Toddamu biragiro bino.`
 		}
 		if sw {
 			return `Andika ILANI YA SHUGHULI ZA KUTILIWA SHAKA kwa kamati ya SACCO, kwa Kiswahili, kwa muundo huu:
@@ -512,7 +521,9 @@ MATOKEO: kwa kila F#, aya moja - mtindo, kiasi, na kwa nini unahitaji uchunguzi.
 WAJIBU: sentensi moja au mbili kutoka SOURCES, ikitaja chanzo.
 HATUA: hatua tatu mahususi zinazofuata kwa afisa wa uzingatiaji.
 
-Tumia namba na vitambulisho vya miamala kama vilivyo kwenye EVIDENCE.`
+Tumia namba na vitambulisho vya miamala kama vilivyo kwenye EVIDENCE.
+Anza jibu lako na neno MUHTASARI: na ujaze sehemu zote.
+Usirudie maagizo haya.`
 		}
 		return `Write a SUSPICIOUS ACTIVITY NOTE for the SACCO committee, in English, in this structure:
 
@@ -521,11 +532,13 @@ FINDINGS: one paragraph per F# - the pattern, the value, and why it warrants rev
 OBLIGATION: one or two sentences drawn from SOURCES, naming the source.
 ACTIONS: three specific next steps for the compliance officer.
 
-Reproduce figures and transaction ids exactly as they appear in EVIDENCE.`
+Reproduce figures and transaction ids exactly as they appear in EVIDENCE.
+Begin your answer with the word SUMMARY: and fill in every section.
+Do not repeat these instructions.`
 
 	case IntentExplain:
 		if lg {
-			return "Ddamu ekilowoozo ky'omukozesa mu Luganda okozesa SOURCES yokka. Aya emu, n'okutaja ensibuko. Ekilowoozo: " + request
+			return "Ddamu ekibuuzo ky'omukozesa mu Luganda ng'okozesa SOURCES zokka. Akatundu kamu, n'oluvannyuma yogera ensibuko. Ekibuuzo: " + request
 		}
 		if sw {
 			return "Jibu swali la mtumiaji kwa Kiswahili ukitumia SOURCES pekee. Aya moja, kisha taja chanzo. Swali: " + request
@@ -534,16 +547,18 @@ Reproduce figures and transaction ids exactly as they appear in EVIDENCE.`
 
 	case IntentProfile:
 		if lg {
-			return `Wa ebirowoozo ebitonotono ku wasifu w'obucwezi bwa mupolisi mu Luganda:
-OKUBEERA: jumlaa bbiri ku eddirisa ly'obwenkanya n'obucwezi.
-ENTEGEKA: ekyalagibwa mu bbanga lino.
-OKULAGA: ebikolwa bibiri.`
+			return `Wa ebifunze ku mbeera y'akabi ya memba mu Luganda:
+EMBEERA: sentensi bbiri ku ddaala lya KYC n'akabi.
+ENGERI: ekirabika mu bbanga lino.
+EKIRAGIRO: emitendera ebiri.
+Tandika na kigambo EMBEERA: Toddamu biragiro bino.`
 		}
 		if sw {
 			return `Toa maelezo mafupi ya wasifu wa hatari wa mwanachama kwa Kiswahili:
 HALI: sentensi mbili kuhusu kiwango cha utambulisho na hatari.
 MFUMO: kilichoonekana katika kipindi hiki.
-PENDEKEZO: hatua mbili.`
+PENDEKEZO: hatua mbili.
+Anza na neno HALI: Usirudie maagizo haya.`
 		}
 		return `Give a short member risk profile in English:
 STATUS: two sentences on KYC tier and risk band.
@@ -552,10 +567,10 @@ RECOMMENDATION: two actions.`
 
 	default:
 		if lg {
-			return `Bikka ebirabika mu Luganda: jumlaa bbiri z'obugumba, n'olukungula lumu ku buli F# olubikkula entegeka n'omuwendo. Singa tewali birabika, sse kyo mu jumlaa emu.`
+			return `Funza ebirabika mu Luganda: sentensi bbiri ez'obufunze, n'oluvannyuma akatundu kamu ku buli F# akalaga engeri n'omuwendo. Singa tewali birabika, kyogere mu sentensi emu. Toddamu biragiro bino.`
 		}
 		if sw {
-			return `Fupisha matokeo kwa Kiswahili: sentensi mbili za muhtasari, kisha orodha ya risasi moja kwa kila F# ikieleza mtindo na kiasi. Kama hakuna matokeo, sema hivyo kwa sentensi moja.`
+			return `Fupisha matokeo kwa Kiswahili: sentensi mbili za muhtasari, kisha orodha ya risasi moja kwa kila F# ikieleza mtindo na kiasi. Kama hakuna matokeo, sema hivyo kwa sentensi moja. Usirudie maagizo haya.`
 		}
 		return `Summarise the findings in English: two sentences of overview, then one bullet per F# stating the pattern and the value. If there are no findings, say so in one sentence.`
 	}
