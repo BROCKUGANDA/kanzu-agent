@@ -1,0 +1,22 @@
+MPANGO WA UTEKELEZAJI  -  intent=scan_suspicious  lang=sw
+  1. ledger.query(end_date="2026-08-24", start_date="2026-08-17")
+  2. rules.scan(rule_ids="ALL")
+  3. kb.search(lang="sw", query="kugawanya miamala wiki hii")
+
+-- USHAHIDI WA UHAKIKA --
+Kipindi: last 7 days (2026-08-17 → 2026-08-23)
+ledger: 22 transactions · 9 members · credits UGX 154,868,000.00 · debits UGX 22,085,000.00
+  [HIGH] Ongezeko la kasi ya miamala — Aisha Nakibuka (M-001)
+      Thamani ya UGX 33,600,000.00 katika saa 168 ni mara 14.9 ya kawaida ya mwanachama (UGX 2,255,000.00).
+      rule=R02_VELOCITY txns=T-1005,T-1006,T-1007,T-1008,T-1009
+
+  [HIGH] Mahusiano na nchi za hatari kubwa — Patrick Mugisha (M-004)
+      Miamala 2 ya jumla UGX 18,200,000.00 inahusisha nchi za hatari kubwa: SY.
+      rule=R06_CROSS_BORDER_EXPOSURE txns=T-1304,T-1305
+
+
+Imetayarishwa kwenye kifaa hiki na Kanzu Agent. Matokeo yanatokana na kanuni
+za uhakika; maelezo yameandikwa kwa msaada wa modeli. Afisa wa uzingatiaji
+lazima aipitie na kuisaini kabla ya kuwasilishwa kwa mdhibiti. Hakuna tuhuma
+ya uhalifu inayodokezwa.
+

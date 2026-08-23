@@ -1,0 +1,28 @@
+EXECUTION PLAN  -  intent=draft_report  lang=en
+  1. ledger.query(end_date="2026-08-24", start_date="2026-08-17")
+       Load the window from the local ledger.
+  2. rules.scan(rule_ids="ALL")
+       Findings must exist before a note can describe them.
+  3. kb.search(lang="en", query="committee compliance draft savings scan suspicious week suspicious transaction reporting obligation")
+       Retrieve citable obligations for the note.
+  4. report.draft(lang="en", template="sar_note")
+       Model narrates the findings. It cannot add, remove or reclassify them.
+
+-- DETERMINISTIC EVIDENCE --
+Period: last 7 days (2026-08-17 → 2026-08-23)
+ledger: 22 transactions · 9 members · credits UGX 154,868,000.00 · debits UGX 22,085,000.00
+
+10 alerts raised
+
+  [HIGH] Transaction velocity spike — Aisha Nakibuka (M-001)
+      Window value of UGX 33,600,000.00 over 168 hours is 14.9x the member's own trailing baseline of UGX 2,255,000.00.
+      rule=R02_VELOCITY txns=T-1005,T-1006,T-1007,T-1008,T-1009
+
+  [HIGH] Higher-risk jurisdiction exposure — Patrick Mugisha (M-004)
+      2 transactions totalling UGX 18,200,000.00 involve watchlisted jurisdictions: SY.
+      rule=R06_CROSS_BORDER_EXPOSURE txns=T-1304,T-1305
+
+  [HIGH] Structuring (deposit splitting) — Aisha Nakibuka (M-001)
+      5 transactions totalling UGX 33,600,000.00 within 72 hours; each individually below the UGX 28,000,000.00 threshold while the aggregate exceeds it.
+      rule=R01_STRUCTURING txns=T-1005,T-1006,T-1007,T-1008,T-1009
+

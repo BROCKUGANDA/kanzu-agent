@@ -1,0 +1,24 @@
+ENTEGEKA Y'OKUKOLA  -  intent=scan_suspicious  lang=lg
+  1. ledger.query(end_date="2026-08-24", start_date="2026-07-25")
+       Read transactions for the specified date range.
+  2. rules.scan(rule_ids="ALL")
+
+-- INFORMS YA KUHALALI --
+
+15 endagamukutu ezayasibwa
+
+  [HIGH] Okugabanya obutunzi (structuring) — Aisha Nakibuka (M-001)
+      Ebyenfuna 5 ebya waggulu wa UGX 33,600,000.00 mu saawa 72, buli kimu wansi wa ekigatte kya UGX 28,000,000.00 naye omuwaggulu gususse ekigatte.
+      rule=R01_STRUCTURING txns=T-1005,T-1006,T-1007,T-1008,T-1009
+
+  [HIGH] Okuyita obwangu kw'ensimbi (layering) — Grace Amongin (M-003)
+
+Kyakolebwa ku kyuma kino Kanzu Agent. Ebirabika bivudde mu mateeka
+ageetegeka; ebigambo byawandiikibwa n'obuyambi bwa mudeli. Omukungu
+w'okukuuma amateeka alina okubikebera n'okubissaako omukono nga
+tebinnaweerezebwa eri abafuzi. Tewali memba avunaanibwa musango.
+
+────────────────────────────────────────────────────────────────────
+inference : 11.7 tok/s generation · 1651 prompt tok · 115 generated · load 44198 ms
+thermal   : no sensor · 2 bursts · 0 gated pauses · duty 72% · cooldown 36.6s
+wall      : 2m12.2s

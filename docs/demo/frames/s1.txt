@@ -1,0 +1,1 @@
+[warn] sensor            not readable on this platform; duty cycling still applies

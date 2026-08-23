@@ -1,0 +1,43 @@
+repo root      C:\Users\HP\Desktop\kanzu agent
+metadata       C:\Users\HP\Desktop\kanzu agent\metadata.json
+ledger         C:\Users\HP\Desktop\kanzu agent\var\kanzu.db
+
+── model ──
+[ok  ] weights present   C:\Users\HP\Desktop\kanzu agent\model\Qwen2.5-1.5B-Instruct-Q4_K_M.gguf
+[ok  ] gguf v3          arch=qwen2 quant=Q4_K_M ctx=32768 tensors=338
+[ok  ] params_match      measured=1543714304 claimed=1.5B (checkable=true)
+[ok  ] architecture      qwen2 (metadata declares qwen2)
+
+── llama.cpp ──
+[ok  ] binary            C:\Users\HP\Desktop\kanzu agent\vendor\llama.cpp\build\bin\llama-completion.exe
+[ok  ] responds          version: 0.2.0-dev (build 10580, commit 54ee5ee64)
+
+── local data ──
+[ok  ] members          9 rows
+[ok  ] accounts         9 rows
+[ok  ] transactions     50 rows
+[ok  ] kb_chunks        44 rows
+[ok  ] alerts           37 rows
+[ok  ] cases            16 rows
+[ok  ] messages         0 rows
+[ok  ] audit_log        67 rows
+
+── retrieval (cross-language) ──
+[ok  ] en query          2 hits [en sw]
+[ok  ] sw query          2 hits [sw en]
+[ok  ] lg query          2 hits [en lg]
+
+── thermal ──
+[warn] sensor            not readable on this platform; duty cycling still applies
+       threads           4 · duty cycle 70%
+
+── prompt templates ──
+[ok  ] planning-en       C:\Users\HP\Desktop\kanzu agent\var\prompts\prompt-planning-en.txt
+[ok  ] planning-sw       C:\Users\HP\Desktop\kanzu agent\var\prompts\prompt-planning-sw.txt
+[ok  ] planning-lg       C:\Users\HP\Desktop\kanzu agent\var\prompts\prompt-planning-lg.txt
+[ok  ] narration-en      C:\Users\HP\Desktop\kanzu agent\var\prompts\prompt-narration-en.txt
+[ok  ] narration-sw      C:\Users\HP\Desktop\kanzu agent\var\prompts\prompt-narration-sw.txt
+[ok  ] narration-lg      C:\Users\HP\Desktop\kanzu agent\var\prompts\prompt-narration-lg.txt
+
+── network ──
+[ok  ] runtime calls     none (verify: bash scripts/verify_offline.sh)

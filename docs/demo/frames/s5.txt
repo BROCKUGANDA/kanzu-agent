@@ -1,0 +1,9 @@
+ADTC Profiler Results
+
+throughput: 12.58 tok/s
+accuracy: 0.76
+
+Measured on: 12th Gen Intel i7-1255U - 7.8 GB RAM - Ubuntu 26.04
+Git commit: 8b8e8902fe88  -  Seed: 42
+
+github.com/BROCKUGANDA/kanzu-agent  -  MIT License

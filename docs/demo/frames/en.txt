@@ -1,0 +1,104 @@
+
+working (deterministic checks first, then narration)…
+
+────────────────────────────────────────────────────────────────────
+EXECUTION PLAN  ·  intent=draft_report  lang=en  origin=deterministic
+────────────────────────────────────────────────────────────────────
+  1. ledger.query(end_date="2026-08-24", start_date="2026-08-17")
+       Load the window from the local ledger.
+  2. rules.scan(rule_ids="ALL")
+       Findings must exist before a note can describe them.
+  3. kb.search(lang="en", query="committee compliance draft savings scan suspicious week suspicious transaction reporting obligation")
+       Retrieve citable obligations for the note.
+  4. report.draft(lang="en", template="sar_note")
+       Model narrates the findings. It cannot add, remove or reclassify them.
+
+────────────────────────────────────────────────────────────────────
+DETERMINISTIC EVIDENCE
+────────────────────────────────────────────────────────────────────
+Period: last 7 days (2026-08-17 → 2026-08-23)
+ledger: 22 transactions · 9 members · credits UGX 154,868,000.00 · debits UGX 22,085,000.00
+
+10 alerts raised
+
+  [HIGH] Transaction velocity spike — Aisha Nakibuka (M-001)
+      Window value of UGX 33,600,000.00 over 168 hours is 14.9x the member's own trailing baseline of UGX 2,255,000.00.
+      rule=R02_VELOCITY txns=T-1005,T-1006,T-1007,T-1008,T-1009
+
+  [HIGH] Higher-risk jurisdiction exposure — Patrick Mugisha (M-004)
+      2 transactions totalling UGX 18,200,000.00 involve watchlisted jurisdictions: SY.
+      rule=R06_CROSS_BORDER_EXPOSURE txns=T-1304,T-1305
+
+  [HIGH] Structuring (deposit splitting) — Aisha Nakibuka (M-001)
+      5 transactions totalling UGX 33,600,000.00 within 72 hours; each individually below the UGX 28,000,000.00 threshold while the aggregate exceeds it.
+      rule=R01_STRUCTURING txns=T-1005,T-1006,T-1007,T-1008,T-1009
+
+  [HIGH] Rapid pass-through of funds (layering) — Grace Amongin (M-003)
+      87% of incoming value left the account again within 48 hours (total UGX 21,840,000.00).
+      rule=R05_RAPID_PASSTHROUGH txns=T-1205,T-1206,T-1207
+
+  [HIGH] Higher-risk jurisdiction exposure — Hassan Waiswa (M-009)
+      1 transactions totalling UGX 3,360,000.00 involve watchlisted jurisdictions: YE.
+      rule=R06_CROSS_BORDER_EXPOSURE txns=T-1803
+
+  [MEDIUM] Repeated round-figure amounts — Aisha Nakibuka (M-001)
+      The identical round figure UGX 6,720,000.00 repeats 5 times, totalling UGX 33,600,000.00.
+      rule=R03_ROUND_AMOUNT txns=T-1005,T-1006,T-1007,T-1008,T-1009
+
+  [MEDIUM] Agent-banking deposit concentration — Aisha Nakibuka (M-001)
+      A single agent-banking agent accounts for 100% of this member's deposits (UGX 33,600,000.00 across 5 transactions).
+      rule=R10_AGENT_CONCENTRATION txns=T-1005,T-1006,T-1007,T-1008,T-1009
+
+  [MEDIUM] Activity beyond verified KYC tier — Fatuma Nalwoga (M-005)
+      KYC tier is 1, yet activity of UGX 7,098,000.00 exceeds the tier ceiling of UGX 5,600,000.00.
+      rule=R07_KYC_LIMIT_BREACH txns=T-1404,T-1405
+
+  [MEDIUM] Amounts clustered below reporting threshold — Sarah Auma (M-007)
+      2 transactions sit between 85% and 100% of the UGX 28,000,000.00 threshold (largest UGX 26,600,000.00).
+      rule=R08_THRESHOLD_HUGGING txns=T-1603,T-1604
+
+  [LOW] Repeated round-figure amounts — Charles Ssemwanga (M-006)
+      The identical round figure UGX 1,400,000.00 repeats 3 times, totalling UGX 4,200,000.00.
+      rule=R03_ROUND_AMOUNT txns=T-1505,T-1506,T-1507
+
+Sources consulted (local knowledge base):
+  · Anti-Money Laundering Act, 2013 (Uganda) and the Financial Intelligence Authority established under it; Anti-Terrorism Act, 2002 (as amended); Tier 4 Microfinance Institutions and Money Lenders Act, 2016 and the Uganda Microfinance Regulatory Authority (UMRA) as the supervisory authority for SACCOs
+  · FATF Guidance on AML/CFT and Financial Inclusion; FATF Recommendations R.12 (PEPs), R.13 (correspondent), R.16 (wire transfers), R.19 (higher-risk countries)
+  · Etteeka ly'Okuggya Ensimbi ez'Obusaasi (Anti-Money Laundering Act 2013, Uganda) — §3 FIA, omugereka gw'okuwanika; Omwongozo gwa FATF ku Eby'Obugagga bw'Abalimu Abatonotono — R.1 okukebera obulabe, R.10 okumanya omukolo, R.20 okuwanika miamala
+
+────────────────────────────────────────────────────────────────────
+SUSPICIOUS ACTIVITY NOTE
+────────────────────────────────────────────────────────────────────
+
+SUMMARY: The SACCO branch has identified suspicious activity involving multiple members who are structuring deposits to evade reporting obligations. These transactions include velocity spikes on member M-001(Aisha Nakibuka), higher-risk jurisdiction exposure on member M-004(Patrick Mugisha), rapid pass-through of funds on member M-003(Grace Amongin), repeated round-figure amounts on member M-001(Aisha Nakibuka), and cross-border exposures on members M-009(Hassan Waiswa) and M-007(Sarah Kigula).
+
+FINDINGS (R02_VELOCITY): Member M-001(Aisha Nakibuka) is exhibiting a significant velocity spike over 168 hours, where UGX 33,600,000.00 was deposited within this period, which is 14.9x their own trailing baseline amount of UGX 2,255,000.00. Transactions T-1005 through T-1009 demonstrate this behavior.
+
+(FINDING R06_CROSS_BORDER_EXPOSURE): Two transactions totalling UGX 18,200,000.00 involve watchlisted jurisdictions SY for member M-004(Patrick Mugisha). 
+
+(FINDING R01_STRUCTURING): Five deposits totaling UGX 33,600,000.00 were made by the same member in just under two days, with each individually below the reporting threshold but collectively exceeding it. These are part of an ongoing deposit splitting typology.
+
+(FINDING R05_RAPID_PASSTHROUGH): Eighty-seven percent of incoming value left the account again within four business days, leaving total UGX 21,840,000.00 to be passed on quickly.
+
+(FINDING R03_ROUND_AMOUNT): The identical round figure UGX 6,720,000.00 repeats five times across all transactions involving member M-001(Aisha Nakibuka), summing up to UGX 33,600,000.00.
+
+OBLIGATION: Members should adhere strictly to regulatory guidelines and report any unusual activity promptly.
+
+ACTIONS:
+1. Conduct a thorough review of transaction history.
+2. Review cross-border exposure activities closely.
+3. Implement enhanced monitoring protocols for high-risk members like M-001(Aisha Nakibuka).
+4. Increase scrutiny on rapid pass-through patterns observed on M-003(Grace Amongin) and M-009(Hassan Waiswa).
+5. Consider implementing additional measures against structured deposits by non-compliant members.
+
+Generated on-device by Kanzu Agent. Findings are produced by deterministic
+rules; the narrative is model-assisted. A human compliance officer must
+review and sign before any regulatory filing. No accusation of criminal
+conduct is implied.
+
+case #17 opened in the local ledger
+
+────────────────────────────────────────────────────────────────────
+inference : 11.0 tok/s generation · 1814 prompt tok · 579 generated · load 42696 ms
+thermal   : no sensor · 2 bursts · 0 gated pauses · duty 79% · cooldown 40s
+wall      : 3m6.3s

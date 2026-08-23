@@ -1,0 +1,96 @@
+
+kola (okukebera okutegeeka olubereberye, n'emboozi)…
+
+────────────────────────────────────────────────────────────────────
+ENTEGEKA Y'OKUKOLA  ·  intent=scan_suspicious  lang=lg  origin=model-refined
+────────────────────────────────────────────────────────────────────
+  1. ledger.query(end_date="2026-08-24", start_date="2026-07-25")
+       Read transactions for the specified date range.
+  2. rules.scan(rule_ids="ALL")
+       Run AML rule engine on the queried transactions.
+
+────────────────────────────────────────────────────────────────────
+OBUKAKAFU OBUTEGEEKA
+────────────────────────────────────────────────────────────────────
+Obudde: last 30 days (2026-07-25 → 2026-08-23)
+ledger: 49 transactions · 9 members · credits UGX 203,347,000.00 · debits UGX 22,085,000.00
+
+15 endagamukutu ezayasibwa
+
+  [HIGH] Enkolagana n'ensi ez'obucwezi obunene — Patrick Mugisha (M-004)
+      Ebyenfuna 2 eby'omuwaggulu wa UGX 18,200,000.00 birikwatanisa n'ensi ez'olutwe: SY.
+      rule=R06_CROSS_BORDER_EXPOSURE txns=T-1304,T-1305
+
+  [HIGH] Okugabanya obutunzi (structuring) — Aisha Nakibuka (M-001)
+      Ebyenfuna 5 ebya waggulu wa UGX 33,600,000.00 mu saawa 72, buli kimu wansi wa ekigatte kya UGX 28,000,000.00 naye omuwaggulu gususse ekigatte.
+      rule=R01_STRUCTURING txns=T-1005,T-1006,T-1007,T-1008,T-1009
+
+  [HIGH] Okuyita obwangu kw'ensimbi (layering) — Grace Amongin (M-003)
+      Ebikumi 87% by'ensimbi ezayingira byavaayo mu saawa 48 (waggulu wa UGX 21,840,000.00).
+      rule=R05_RAPID_PASSTHROUGH txns=T-1205,T-1206,T-1207
+
+  [HIGH] Enkolagana n'ensi ez'obucwezi obunene — Hassan Waiswa (M-009)
+      Ebyenfuna 1 eby'omuwaggulu wa UGX 3,360,000.00 birikwatanisa n'ensi ez'olutwe: YE.
+      rule=R06_CROSS_BORDER_EXPOSURE txns=T-1803
+
+  [MEDIUM] Okuddamu okukozesa akawunti eyali eriho — Robert Ochen (M-002)
+      Akawunti yaali eriho emisana 271, ng'ebyo ebyenfuna 2 eby'omuwaggulu wa UGX 21,000,000.00 bikyusibwa.
+      rule=R04_DORMANT_REACTIVATION txns=T-1102,T-1103
+
+  [MEDIUM] Emirimu okutuuka awatali okwenkanya — Fatuma Nalwoga (M-005)
+      Eddirisa ly'obwenkanya ndi 1, naye emirimu egy'omuwaggulu wa UGX 11,424,000.00 gigusse ekigatte kya UGX 5,600,000.00.
+      rule=R07_KYC_LIMIT_BREACH txns=T-1401,T-1402,T-1403,T-1404,T-1405
+
+  [MEDIUM] Okuddamu amannya agapangiddwa — Aisha Nakibuka (M-001)
+      Omuwendo gumwe ogupangiddwa gwa UGX 6,720,000.00 guddiriddwamu emirundi 5; waggulu wa UGX 33,600,000.00.
+      rule=R03_ROUND_AMOUNT txns=T-1005,T-1006,T-1007,T-1008,T-1009
+
+  [MEDIUM] Okuŋŋaana kw'obutunzi mu lukalala lw'omukozi omu — Charles Ssemwanga (M-006)
+      Omukozi omu wa agent-banking ayetegeeka 100% y'obutunzi bw'omupolisi (UGX 8,050,000.00 mu ebyenfuna 7).
+      rule=R10_AGENT_CONCENTRATION txns=T-1501,T-1502,T-1503,T-1504,T-1505,T-1506,+1 more
+
+  [MEDIUM] Okuŋŋaana kw'obutunzi mu lukalala lw'omukozi omu — Sarah Auma (M-007)
+      Omukozi omu wa agent-banking ayetegeeka 100% y'obutunzi bw'omupolisi (UGX 57,316,000.00 mu ebyenfuna 4).
+      rule=R10_AGENT_CONCENTRATION txns=T-1601,T-1602,T-1603,T-1604
+
+  [MEDIUM] Okuŋŋaana kw'obutunzi mu lukalala lw'omukozi omu — Aisha Nakibuka (M-001)
+      Omukozi omu wa agent-banking ayetegeeka 98% y'obutunzi bw'omupolisi (UGX 35,240,000.00 mu ebyenfuna 8).
+      rule=R10_AGENT_CONCENTRATION txns=T-1001,T-1003,T-1004,T-1005,T-1006,T-1007,+2 more
+
+  [MEDIUM] Okuŋŋaana kw'obutunzi mu lukalala lw'omukozi omu — Fatuma Nalwoga (M-005)
+      Omukozi omu wa agent-banking ayetegeeka 92% y'obutunzi bw'omupolisi (UGX 10,458,000.00 mu ebyenfuna 3).
+      rule=R10_AGENT_CONCENTRATION txns=T-1403,T-1404,T-1405
+
+  [MEDIUM] Okuŋŋaana kw'obutunzi mu lukalala lw'omukozi omu — Patrick Mugisha (M-004)
+      Omukozi omu wa agent-banking ayetegeeka 84% y'obutunzi bw'omupolisi (UGX 18,200,000.00 mu ebyenfuna 2).
+      rule=R10_AGENT_CONCENTRATION txns=T-1304,T-1305
+
+  [MEDIUM] Amannya agakuŋŋaana wansi w'omugereka gw'okuwanika — Sarah Auma (M-007)
+      Ebyenfuna 2 biri mu 85% ne 100% y'ekigatte kya UGX 28,000,000.00 (ennene ennene UGX 26,600,000.00).
+      rule=R08_THRESHOLD_HUGGING txns=T-1603,T-1604
+
+  [LOW] Okuŋŋaana kw'obutunzi mu lukalala lw'omukozi omu — Peace Nabirye (M-008)
+      Omukozi omu wa agent-banking ayetegeeka 100% y'obutunzi bw'omupolisi (UGX 2,170,000.00 mu ebyenfuna 6).
+      rule=R10_AGENT_CONCENTRATION txns=T-1701,T-1702,T-1703,T-1704,T-1705,T-1706
+
+  [LOW] Okuddamu amannya agapangiddwa — Charles Ssemwanga (M-006)
+      Omuwendo gumwe ogupangiddwa gwa UGX 1,400,000.00 guddiriddwamu emirundi 4; waggulu wa UGX 5,600,000.00.
+      rule=R03_ROUND_AMOUNT txns=T-1504,T-1505,T-1506,T-1507
+
+────────────────────────────────────────────────────────────────────
+PPAPULA Y'EBIKOLWA EBITEEBEREZEBWA
+────────────────────────────────────────────────────────────────────
+
+Ebyenfuna y'ebye byakawunti eyali eriho (F-5) bukkwanisa n'omuwendo.
+
+Toteeka bigambo 7 ebya waggulu wa UGX 28,000,000.00 mu saawa 72, buli kimu wansi wa ekigatte kya UGX 28,000,000.00 naye omuwaggulu gususse ekigatte.
+
+Kyakolebwa ku kyuma kino Kanzu Agent. Ebirabika bivudde mu mateeka
+ageetegeka; ebigambo byawandiikibwa n'obuyambi bwa mudeli. Omukungu
+w'okukuuma amateeka alina okubikebera n'okubissaako omukono nga
+tebinnaweerezebwa eri abafuzi. Tewali memba avunaanibwa musango.
+
+────────────────────────────────────────────────────────────────────
+inference : 11.7 tok/s generation · 1651 prompt tok · 115 generated · load 44198 ms
+thermal   : no sensor · 2 bursts · 0 gated pauses · duty 72% · cooldown 36.6s
+wall      : 2m12.2s

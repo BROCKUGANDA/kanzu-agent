@@ -1,0 +1,92 @@
+
+inafanya kazi (ukaguzi wa uhakika kwanza, kisha maelezo)…
+
+────────────────────────────────────────────────────────────────────
+MPANGO WA UTEKELEZAJI  ·  intent=scan_suspicious  lang=sw  origin=model-refined
+────────────────────────────────────────────────────────────────────
+  1. ledger.query(end_date="2026-08-24", start_date="2026-08-17")
+  2. rules.scan(rule_ids="ALL")
+  3. kb.search(lang="sw", query="kugawanya miamala wiki hii")
+
+────────────────────────────────────────────────────────────────────
+USHAHIDI WA UHAKIKA
+────────────────────────────────────────────────────────────────────
+Kipindi: last 7 days (2026-08-17 → 2026-08-23)
+ledger: 22 transactions · 9 members · credits UGX 154,868,000.00 · debits UGX 22,085,000.00
+
+10 ilani zilizotolewa
+
+  [HIGH] Ongezeko la kasi ya miamala — Aisha Nakibuka (M-001)
+      Thamani ya UGX 33,600,000.00 katika saa 168 ni mara 14.9 ya kawaida ya mwanachama (UGX 2,255,000.00).
+      rule=R02_VELOCITY txns=T-1005,T-1006,T-1007,T-1008,T-1009
+
+  [HIGH] Mahusiano na nchi za hatari kubwa — Patrick Mugisha (M-004)
+      Miamala 2 ya jumla UGX 18,200,000.00 inahusisha nchi za hatari kubwa: SY.
+      rule=R06_CROSS_BORDER_EXPOSURE txns=T-1304,T-1305
+
+  [HIGH] Kugawanya miamala (structuring) — Aisha Nakibuka (M-001)
+      Miamala 5 ya jumla ya UGX 33,600,000.00 katika saa 72, kila mmoja chini ya kikomo cha UGX 28,000,000.00, lakini jumla imevuka kikomo.
+      rule=R01_STRUCTURING txns=T-1005,T-1006,T-1007,T-1008,T-1009
+
+  [HIGH] Fedha kupita haraka (upangaji tabaka) — Grace Amongin (M-003)
+      Asilimia 87 ya fedha zilizoingia zilitolewa tena katika saa 48 (jumla UGX 21,840,000.00).
+      rule=R05_RAPID_PASSTHROUGH txns=T-1205,T-1206,T-1207
+
+  [HIGH] Mahusiano na nchi za hatari kubwa — Hassan Waiswa (M-009)
+      Miamala 1 ya jumla UGX 3,360,000.00 inahusisha nchi za hatari kubwa: YE.
+      rule=R06_CROSS_BORDER_EXPOSURE txns=T-1803
+
+  [MEDIUM] Kurudia kiasi kilichokamilika — Aisha Nakibuka (M-001)
+      Kiasi kilekile kilichokamilika cha UGX 6,720,000.00 kimerudiwa mara 5; jumla UGX 33,600,000.00.
+      rule=R03_ROUND_AMOUNT txns=T-1005,T-1006,T-1007,T-1008,T-1009
+
+  [MEDIUM] Mkusanyiko wa amana kupitia wakala mmoja — Aisha Nakibuka (M-001)
+      Wakala mmoja wa agent-banking amechangia 100% ya amana za mwanachama (UGX 33,600,000.00 katika miamala 5).
+      rule=R10_AGENT_CONCENTRATION txns=T-1005,T-1006,T-1007,T-1008,T-1009
+
+  [MEDIUM] Shughuli zaidi ya kiwango cha utambulisho — Fatuma Nalwoga (M-005)
+      Kiwango cha utambulisho ni 1, lakini shughuli za UGX 7,098,000.00 zimevuka ukomo wa UGX 5,600,000.00.
+      rule=R07_KYC_LIMIT_BREACH txns=T-1404,T-1405
+
+  [MEDIUM] Viwango vilivyokusanyika chini ya kikomo cha kuripoti — Sarah Auma (M-007)
+      Miamala 2 imepangwa kati ya asilimia 85 na 100 ya kikomo cha UGX 28,000,000.00 (kubwa zaidi UGX 26,600,000.00).
+      rule=R08_THRESHOLD_HUGGING txns=T-1603,T-1604
+
+  [LOW] Kurudia kiasi kilichokamilika — Charles Ssemwanga (M-006)
+      Kiasi kilekile kilichokamilika cha UGX 1,400,000.00 kimerudiwa mara 3; jumla UGX 4,200,000.00.
+      rule=R03_ROUND_AMOUNT txns=T-1505,T-1506,T-1507
+
+Vyanzo vilivyotumika (hifadhi ya maarifa ya ndani):
+  · Mwongozo wa FATF kuhusu AML/CFT na Ujumuishi wa Kifedha; Mapendekezo ya FATF R.12 (PEP), R.16 (uhamisho wa fedha), R.19 (nchi za hatari kubwa)
+  · FATF Guidance on AML/CFT and Financial Inclusion; FATF Recommendations R.12 (PEPs), R.13 (correspondent), R.16 (wire transfers), R.19 (higher-risk countries)
+
+────────────────────────────────────────────────────────────────────
+TAARIFA YA SHUGHULI ZA KUTILIWA SHAKA
+────────────────────────────────────────────────────────────────────
+
+Mafuta wa fupa:
+
+- **Kuunzishwa**: Mwanachama ambaye alipata kuunzishwa kutoka wengine cha uandishi.
+- **Tajukani**: Tumia tajukuni yake au kuchang'omwe chakula.
+- **Sasa**: Sasa kuhusu jibu lako.
+
+**Sentenzi 1:** "Umbuti zaidi ni ndege kwenye makati ya akiba au kuiwasilisha kwa Mamlaka ya Ujasusi wa Fedha (FIA) ya Uganda."
+
+**Sentenzi 2:** "Inayotanua kukutumu unaweza usimamini katika miamala." 
+
+**Sentenzi 3:** "Ndiwo aina nyingine kwamba inawezekana kamati ya amani." 
+
+**Sentenzi 4:** "Piga picha la uchunguzi wa fedha kuwa taarifa ya lugha rahisi ambayo afisa wa SACCO anaweza kuisomea kamati ya akiba au kuiwasilisha kwa Mamlaka ya Ujasusi wa Fedha (FIA) ya Uganda."
+
+**Kuuna fupisha:**
+"Ndio, hivyo na mtindo za mwanachama ambaye alipata kuunzishwa kutoka wengine cha uandishi. Kwa mfano, tajukuni yake ulikuwa 'Mafuta wa Fupa' ili tunyokubadiliwa kuhusu jibu lako."
+
+Imetayarishwa kwenye kifaa hiki na Kanzu Agent. Matokeo yanatokana na kanuni
+za uhakika; maelezo yameandikwa kwa msaada wa modeli. Afisa wa uzingatiaji
+lazima aipitie na kuisaini kabla ya kuwasilishwa kwa mdhibiti. Hakuna tuhuma
+ya uhalifu inayodokezwa.
+
+────────────────────────────────────────────────────────────────────
+inference : 9.8 tok/s generation · 2093 prompt tok · 349 generated · load 66049 ms
+thermal   : no sensor · 2 bursts · 0 gated pauses · duty 82% · cooldown 40s
+wall      : 3m41.9s
