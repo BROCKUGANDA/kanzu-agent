@@ -546,6 +546,7 @@ kanzu-agent/
 
 ```bash
 # Prerequisites: Go ≥ 1.22, Git Bash (Windows) or POSIX shell (Linux/macOS)
+#                Docker Desktop (for linux/amd64 image build)
 
 # 1. Clone
 git clone <repo-url> kanzu-agent && cd kanzu-agent
@@ -566,31 +567,43 @@ go run ./cmd/kanzu doctor
 # Checks: model, gguf, params_match, llama.cpp binary, local data,
 #         retrieval EN+SW+LG, thermal, 6 prompt templates, network=none
 
-# 6. Run the agent (three interfaces)
-go run ./cmd/kanzu chat            # Bubble Tea TUI — full interactive interface
-go run ./cmd/kanzu ask "flag suspicious transactions this week and draft a compliance note for the committee"
+# 6. Run the agent (three interfaces) — global flags work before OR after subcommand
+go run ./cmd/kanzu chat                                    # Bubble Tea TUI
+go run ./cmd/kanzu ask "flag suspicious transactions this week"
+go run ./cmd/kanzu -lang en ask "flag suspicious transactions this week"
 go run ./cmd/kanzu ask -lang sw "chunguza miamala ya kutiliwa shaka wiki hii"
+go run ./cmd/kanzu -lang sw ask "chunguza miamala ya kutiliwa shaka wiki hii"
 go run ./cmd/kanzu ask -lang lg "kebera ebyenfuna eby'obucwezi sabbiiti eno"
-go run ./cmd/kanzu scan -days 7    # deterministic only, no model
+go run ./cmd/kanzu -lang lg ask "kebera ebyenfuna eby'obucwezi sabbiiti eno"
+go run ./cmd/kanzu scan -days 7                            # deterministic only, no model
+go run ./cmd/kanzu -lang sw report -days 14
+go run ./cmd/kanzu -lang lg scan -days 7 -no-model
 
 # 7. HTML visual prototype (no server required)
 start web/kanzu-chat.html          # Windows — opens in default browser
 
-# 8. Prove offline (Linux)
+# 8. Build and test Docker image (linux/amd64)
+docker build --platform linux/amd64 -t kanzu-agent:latest .
+docker run --rm kanzu-agent:latest doctor
+# Should show all [ok  ] including llama.cpp b10580, 6 prompts, retrieval EN/SW/LG
+
+# 9. Prove offline (Linux)
 go build -o bin/kanzu ./cmd/kanzu
 bash scripts/verify_offline.sh     # must complete inside unshare -n with exit 0
 
-# 8. (Optional) Fine-tune
+# 9. (Optional) Fine-tune
 pip install huggingface_hub datasets
 python3 training/prepare_datasets.py
 bash training/train_lora.sh
 go run ./cmd/kanzu doctor          # tensor count must remain 338
 
-# 9. Profile (run on ADTC Standard Laptop)
-pip install "git+https://github.com/Africa-Deep-Tech-Foundation/adtc-profiler.git"
-bash download_model.sh
-adtc-profiler run --submission . --mode participant --output submission.json --skip-accuracy
-cat submission.json                # must show "measured_on": "participant_laptop"
+# 10. Profile (run on ADTC Standard Laptop)
+# NOTE: The adtc-profiler repository is not publicly available (404 on GitHub/PyPI).
+# The evaluation team must run it on the ADTC Standard Laptop:
+#   pip install "git+https://github.com/Africa-Deep-Tech-Foundation/adtc-profiler.git"
+#   bash download_model.sh
+#   adtc-profiler run --submission . --mode participant --output submission.json --skip-accuracy
+#   cat submission.json                # must show "measured_on": "participant_laptop"
 ```
 
 ---
