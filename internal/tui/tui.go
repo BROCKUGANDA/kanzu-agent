@@ -81,8 +81,13 @@ func (s *Session) render(out *agent.Outcome, elapsed time.Duration) {
 		s.printf("\n%s\n%s\n%s\n\n%s\n", rule, i18n.T(lang, "report.header"), rule, out.Answer)
 		s.printf("\n%s\n", wrap(i18n.T(lang, "report.disclaimer"), 76))
 	} else if out.Degraded {
-		s.printf("\n[%s: %s]\n", i18n.T(lang, "model.offline"), out.DegradeWhy)
+		if out.DegradeWhy != "" && out.DegradeWhy != i18n.T(lang, "model.offline") {
+			s.printf("\n[%s: %s]\n", i18n.T(lang, "model.offline"), out.DegradeWhy)
+		} else {
+			s.printf("\n[%s]\n", i18n.T(lang, "model.offline"))
+		}
 	}
+
 
 	if out.CaseID > 0 {
 		s.printf("\ncase #%d opened in the local ledger\n", out.CaseID)

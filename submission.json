@@ -19,7 +19,7 @@
     "cross_disciplinary_pairing": {
       "discipline": "financial_compliance",
       "load_bearing": true,
-      "description": "Kanzu Agent pairs on-device language modelling with AML/CFT supervisory practice for Ugandan SACCOs and micro-SMEs. The pairing is load-bearing, not cosmetic: a deterministic Go rule engine (ten FATF-aligned typologies over a local SQLite ledger, calibrated to UGX thresholds under Uganda's Anti-Money Laundering Act 2013) performs every flagging decision, and the model is confined to non-adjudicative work â€” decomposing an officer's natural-language request into tool calls, and rendering the rule engine's structured findings into a trilingual (English/Kiswahili/Luganda) suspicious-activity narrative with retrieved regulatory citations for filing with Uganda's Financial Intelligence Authority (FIA). Removing the compliance layer removes the product; removing the model leaves a working but plain-text command-line auditor."
+      "description": "Kanzu Agent pairs on-device language modelling with AML/CFT supervisory practice for Ugandan SACCOs and micro-SMEs. The pairing is load-bearing, not cosmetic: a deterministic Go rule engine (ten FATF-aligned typologies over a local SQLite ledger, calibrated to UGX thresholds under Uganda's Anti-Money Laundering Act 2013) performs every flagging decision, and the model is confined to non-adjudicative work — decomposing an officer's natural-language request into tool calls, and rendering the rule engine's structured findings into a trilingual (English/Kiswahili/Luganda) suspicious-activity narrative with retrieved regulatory citations for filing with Uganda's Financial Intelligence Authority (FIA). Removing the compliance layer removes the product; removing the model leaves a working but plain-text command-line auditor."
     },
     "test_prompts": [
       {
@@ -41,21 +41,21 @@
   },
   "environment": {
     "measured_on": "participant_laptop",
-    "cpu_model": "Intel64 Family 6 Model 154 Stepping 4, GenuineIntel",
-    "ram_gb": 15.7,
+    "cpu_model": "12th Gen Intel(R) Core(TM) i7-1255U",
+    "ram_gb": 7.8,
     "gpu": "none",
-    "os": "Windows-11-10.0.26200-SP0"
+    "os": "Ubuntu 26.04 LTS"
   },
   "throughput": {
-    "tokens_per_second_generation": 13.06,
-    "first_token_latency_ms": 4186.33,
+    "tokens_per_second_generation": 12.58,
+    "first_token_latency_ms": 15739.3,
     "prompt_tokens": 512,
     "generated_tokens": 128
   },
   "memory": {
-    "peak_rss_mb": 1587.26,
-    "steady_state_rss_mb": 1340.94,
-    "peak_vms_mb": 873.04
+    "peak_rss_mb": 1702.0,
+    "steady_state_rss_mb": 1623.02,
+    "peak_vms_mb": 2165.45
   },
   "accuracy": [
     {
@@ -68,13 +68,13 @@
     }
   ],
   "cpu_thermal": {
-    "cpu_percent_p99": 100.0,
+    "cpu_percent_p99": 99.5,
     "core_temp_c_peak": null,
     "throttled": false
   },
   "reproducibility": {
-    "git_commit_sha": "6650fc7bc832822602d0dd6ebb919c05f3ba4008",
-    "docker_image_digest": "kanzu-agent@sha256:3e767c089ad5da04d9b7018c5364f59f217589a416d16fbdbcb54ba1b1737156",
+    "git_commit_sha": "8b8e8902fe88",
+    "docker_image_digest": "unknown",
     "random_seed": 42
   },
   "model_info": {

@@ -1,3 +1,9 @@
+---
+lang: lg
+source: aml-misingi-lg
+citation: Etteeka ly'Okuggya Ensimbi ez'Obusaasi (Anti-Money Laundering Act 2013, Uganda) — §3 FIA, omugereka gw'okuwanika; Omwongozo gwa FATF ku Eby'Obugagga bw'Abalimu Abatonotono — R.1 okukebera obulabe, R.10 okumanya omukolo, R.20 okuwanika miamala
+---
+
 # Emigaso gy'AML/CFT — Obutonde bw'Uganda
 
 **Ensibuko:** Etteeka ly'Okuggya Ensimbi ez'Obusaasi (Anti-Money Laundering Act 2013, Uganda), Ebiragiro bya FIA, n'Omwongozo gwa FATF ku Eby'Obugagga bw'Abalimu Abatonotono.

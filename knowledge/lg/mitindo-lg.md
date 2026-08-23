@@ -1,3 +1,9 @@
+---
+lang: lg
+source: mitindo-lg
+citation: Omwongozo gwa FATF ku Eby'Obugagga bw'Abalimu Abatonotono (2013) — Mitindo egy'okuggya ensimbi; Etteeka ly'Okuggya Ensimbi ez'Obusaasi (AMLA 2013, Uganda); Ebiragiro bya FIA ku mitindo mu SACCOs
+---
+
 # Mitindo gy'Obucwezi — Obutonde bw'Uganda
 
 **Ensibuko:** Omwongozo gwa FATF ku Eby'Obugagga bw'Abalimu Abatonotono (2013), Eddiini y'Okuggya Ensimbi ez'Obusaasi ya Uganda (AMLA 2013), Ebiragiro bya FIA ku Mitindo egy'Okuggya Ensimbi mu SACCOs.

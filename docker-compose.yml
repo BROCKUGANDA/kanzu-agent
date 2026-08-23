@@ -32,6 +32,26 @@ services:
       KANZU_THREADS: "4"
       KANZU_SEED: "42"
       KANZU_DUTY_CYCLE: "0.7"
+    # ── production hardening ──
+    # Refuse privilege escalation from within the container.
+    security_opt:
+      - no-new-privileges:true
+    # The agent needs no Linux capabilities at all — drop them all.
+    cap_drop:
+      - ALL
+    # Read-only root filesystem except the two writable volumes below.
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m,noexec,nosuid
+      # kanzu writes nothing outside var/ at runtime; give sqlite its temp dir.
+      - /app/var/tmp:size=32m,noexec,nosuid
+    # Keep inference from starving the host on shared dev machines. Tune to
+    # the ADTC Standard Laptop profile when scoring.
+    deploy:
+      resources:
+        limits:
+          cpus: "4"
+          pids: 128
     # The default CMD is "doctor" (set in Dockerfile); override per run.
     stdin_open: true
     tty: true

@@ -34,6 +34,9 @@ cmake -S "$SRC" -B "$BUILD" $CMAKE_GEN \
     -DLLAMA_BUILD_TESTS=OFF
 
 # --- build ---
-cmake --build "$BUILD" --target llama-cli train-text-lora -j "$(nproc 2>/dev/null || echo 4)"
+# llama-bench is built alongside llama-cli because adtc-profiler wraps it to
+# produce the scored throughput numbers; without it `run_profiler.sh` fails at
+# the throughput stage with "llama-bench not found on PATH".
+cmake --build "$BUILD" --target llama-cli llama-bench train-text-lora -j "$(nproc 2>/dev/null || echo 4)"
 
-echo "Build complete: $BUILD/bin/llama-cli"
+echo "Build complete: $BUILD/bin/llama-cli + $BUILD/bin/llama-bench"

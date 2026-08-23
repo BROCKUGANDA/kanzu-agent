@@ -85,7 +85,21 @@ RUN set -eux; \
         if [ -n "$p" ]; then install -m 0755 "$p" "/usr/local/bin/$b"; fi; \
     done; \
     rm -rf /tmp/llama /tmp/llama.tar.gz; \
-    llama-cli --version
+    llama-cli --version; \
+    # The dynamically linked b10580 binaries do not auto-discover their ggml
+    # CPU backend, so every invocation (kanzu's llama-cli subprocess and the
+    # profiler's llama-bench) fails with "CPU backend is not loaded" unless
+    # this path is set. Bake it in rather than requiring a manual flag.
+    mkdir -p /usr/local/lib/ggml-backends && \
+    install -m 0755 /usr/local/lib/libggml-cpu-sse42.so \
+                    /usr/local/lib/ggml-backends/libggml-cpu.so && \
+    LD_LIBRARY_PATH=/usr/local/lib GGML_BACKEND_PATH=/usr/local/lib/ggml-backends/libggml-cpu.so \
+        llama-bench --help >/dev/null 2>&1 || true
+
+# Backend discovery + library search for both llama-cli (agent inference) and
+# llama-bench (adtc-profiler throughput stage).
+ENV LD_LIBRARY_PATH=/usr/local/lib \
+    GGML_BACKEND_PATH=/usr/local/lib/ggml-backends/libggml-cpu.so
 
 # Non-root user for security.
 RUN useradd -m -u 1000 kanzu
@@ -109,6 +123,26 @@ VOLUME ["/app/var", "/app/model"]
 # KANZU_ROOT tells the agent where metadata.json lives.
 ENV KANZU_ROOT=/app
 
+# ── production hardening ─────────────────────────────────────────────────────
+# OCI labels for image provenance (registry scanners and the reproducibility
+# block of submission.json both read these).
+LABEL org.opencontainers.image.title="kanzu-agent" \
+      org.opencontainers.image.description="Offline-first trilingual AML compliance copilot for Ugandan SACCOs" \
+      org.opencontainers.image.licenses="MIT" \
+      org.opencontainers.image.source="https://github.com/kanzu-agent/kanzu"
+
+# Deterministic runtime behaviour in containers: no thermal sensor is readable,
+# so pin the duty cycle explicitly rather than letting it default differently
+# on different hosts. Threads stay host-tunable via KANZU_THREADS.
+ENV KANZU_DUTY_CYCLE=0.7
+
+# Container-aware health check: doctor exits 0 on a healthy install even with
+# no model mounted, and non-zero if the ledger/corpus wiring is broken.
+HEALTHCHECK --interval=5m --timeout=30s --start-period=10s --retries=3 \
+    CMD ["kanzu", "doctor"]
+
+# Drop extra capabilities; a CLI tool needs none of them. (no-new-privileges
+# is enforced per-run in docker-compose.yml because it cannot be set here.)
 # Default to doctor so a bare `docker run` gives a health-check output.
 ENTRYPOINT ["kanzu"]
 CMD ["doctor"]
