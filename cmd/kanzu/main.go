@@ -161,15 +161,44 @@ func run() error {
 	}
 }
 
+// valueFlags are the flags that consume the following argument when written in
+// the "-flag value" form. splitArgs has to know about them: otherwise
+// "kanzu -lang sw ask ..." mistakes the flag's value ("sw") for the subcommand.
+var valueFlags = map[string]bool{
+	"lang": true, "planner": true, "threads": true, "db": true,
+	"days": true, "member": true, "limit": true, "from": true, "reps": true,
+}
+
 // splitArgs separates the subcommand from its flags, tolerating either order.
+//
+// Two things make this fiddly. First, a value-taking flag written as
+// "-lang sw" contributes a bare token that must not be read as the subcommand.
+// Second, Go's flag package stops parsing at the first non-flag argument, so
+// every flag has to be moved ahead of the positional arguments before
+// flag.Parse sees them — otherwise "kanzu ask "..." -lang sw" silently folds
+// "-lang sw" into the request text instead of switching language.
 func splitArgs(args []string) (string, []string) {
-	for i, a := range args {
-		if !strings.HasPrefix(a, "-") {
-			out := append([]string{}, args[:i]...)
-			return a, append(out, args[i+1:]...)
+	var flags, positional []string
+
+	for i := 0; i < len(args); i++ {
+		a := args[i]
+		if strings.HasPrefix(a, "-") && a != "-" {
+			flags = append(flags, a)
+			name := strings.TrimLeft(a, "-")
+			// "-flag=value" already carries its value.
+			if !strings.Contains(name, "=") && valueFlags[name] && i+1 < len(args) {
+				i++
+				flags = append(flags, args[i])
+			}
+			continue
 		}
+		positional = append(positional, a)
 	}
-	return "", args
+
+	if len(positional) == 0 {
+		return "", flags
+	}
+	return positional[0], append(flags, positional[1:]...)
 }
 
 // ── shared wiring ────────────────────────────────────────────────────────────
