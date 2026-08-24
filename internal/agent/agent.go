@@ -18,6 +18,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/kanzu-agent/kanzu/internal/config"
@@ -43,7 +44,8 @@ type Agent struct {
 	// Now is injectable so tests and the demo script get stable windows.
 	Now func() time.Time
 
-	lastPlan Plan
+	lastPlanMu sync.Mutex
+	lastPlan   Plan
 }
 
 // New constructs an Agent.
@@ -99,7 +101,13 @@ type Outcome struct {
 }
 
 // LastPlan returns the most recent plan, for the `:plan` chat command.
-func (a *Agent) LastPlan() Plan { return a.lastPlan }
+// Execute runs in a goroutine while the TUI reads plans from the Bubble Tea
+// update loop, so the field is guarded rather than read directly.
+func (a *Agent) LastPlan() Plan {
+	a.lastPlanMu.Lock()
+	defer a.lastPlanMu.Unlock()
+	return a.lastPlan
+}
 
 // Execute runs one request end to end.
 func (a *Agent) Execute(ctx context.Context, request string) (*Outcome, error) {
@@ -118,7 +126,7 @@ func (a *Agent) Execute(ctx context.Context, request string) (*Outcome, error) {
 		plan = refined
 		_ = notes
 	}
-	a.lastPlan = plan
+	a.setLastPlan(plan)
 
 	out := &Outcome{Plan: plan}
 	ev, err := a.gather(ctx, plan)
@@ -767,4 +775,10 @@ func truncate(s string, n int) string {
 		return s
 	}
 	return s[:n] + "…"
+}
+
+func (a *Agent) setLastPlan(p Plan) {
+	a.lastPlanMu.Lock()
+	defer a.lastPlanMu.Unlock()
+	a.lastPlan = p
 }

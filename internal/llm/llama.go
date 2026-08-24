@@ -93,12 +93,21 @@ type Runner struct {
 var ErrNoBinary = errors.New("llama.cpp not found")
 
 // New constructs a Runner.
+//
+// A Runner without a Governor would bypass thermal pacing entirely; when the
+// caller passes nil this installs a default rather than allowing an unpaced
+// path to exist. Eager initialisation here is what makes the "safe for
+// concurrent use" contract true: the lazy fallback it replaces wrote r.Gov
+// from whichever goroutine got there first.
 func New(bin, modelPath, tmpDir string, threads, ctxTokens int, gov *thermal.Governor) *Runner {
 	if threads < 1 {
 		threads = 1
 	}
 	if ctxTokens < 512 {
 		ctxTokens = 512
+	}
+	if gov == nil {
+		gov = thermal.New(82, 72, 0.7)
 	}
 	return &Runner{
 		Bin:        bin,
@@ -331,7 +340,7 @@ func (r *Runner) Generate(ctx context.Context, req Request) (*Result, error) {
 	var stdout, stderr bytes.Buffer
 	res := &Result{Label: req.Label}
 
-	runErr := r.gov().Run(ctx, func() error {
+	runErr := r.Gov.Run(ctx, func() error {
 		cmd := exec.CommandContext(ctx, r.Bin, args...)
 		cmd.Stdout = &stdout
 		cmd.Stderr = &stderr
@@ -358,16 +367,6 @@ func (r *Runner) Generate(ctx context.Context, req Request) (*Result, error) {
 		return nil, fmt.Errorf("llama.cpp produced no output\n%s", tail(stderr.String(), 1200))
 	}
 	return res, nil
-}
-
-func (r *Runner) gov() *thermal.Governor {
-	if r.Gov != nil {
-		return r.Gov
-	}
-	// A Runner without a Governor would bypass thermal pacing entirely; give it
-	// a default rather than allowing an unpaced path to exist.
-	r.Gov = thermal.New(82, 72, 0.7)
-	return r.Gov
 }
 
 func (r *Runner) writePrompt(prompt string) (string, func(), error) {
