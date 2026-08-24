@@ -34,8 +34,7 @@ jobs:
 
       - name: Run tests
         run: |
-          go test -mod=vendor -race -count=1 -timeout 120s ./... 2>&1 || \
-            echo "::warning::No test files yet — add tests in internal/*/..."
+          go test -mod=vendor -race -count=1 -timeout 120s ./...
 
       - name: Upload binary artifact
         uses: actions/upload-artifact@v4
@@ -59,7 +58,7 @@ jobs:
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v6
         with:
-          version: latest
+          version: v2.4.0
           args: --timeout=5m --out-format=colored-line-number
 
   # ── 3. Metadata validation ─────────────────────────────────────────────────
@@ -136,8 +135,17 @@ jobs:
 
       - name: Verify no net/http in runtime code
         run: |
-          if grep -r 'net/http' cmd/ internal/ --include='*.go'; then
-            echo "FAIL: net/http found in runtime code — breaks offline claim"
+          # Match real import declarations only — a mention of "net/http" in a
+          # comment or doc string is not a network dependency. The grep is the
+          # fast guard; `go list -deps` below is the authoritative check over
+          # the actual build graph.
+          if grep -rn --include='*.go' '"net/http"' cmd internal; then
+            echo "FAIL: net/http imported in runtime code — breaks offline claim"
+            exit 1
+          fi
+          deps=$(go list -deps ./... | grep -c '^net/http$' || true)
+          if [ "$deps" != "0" ]; then
+            echo "FAIL: net/http in the dependency graph"
             exit 1
           fi
           echo "✓ No net/http in cmd/ or internal/"
