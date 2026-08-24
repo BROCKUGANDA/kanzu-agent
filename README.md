@@ -16,11 +16,11 @@ assistance** to the field officer's laptop—no internet required.
 A TUI (terminal) agent that runs entirely on-device:
 
 - **Trilingual chat** — English, Kiswahili, Luganda
-- **Deterministic AML rule engine** — 8 rules covering velocity spikes, watchlist
-  exposure, structuring, threshold breaches, dormant-account reactivation, and
-  more (zero model involvement in compliance decisions)
-- **Cross-lingual KB retrieval** — 3,000 chunk regulatory corpus indexed per
-  language; queries retrieve across all three
+- **Deterministic AML rule engine** — 10 rules covering velocity spikes,
+  watchlist exposure, structuring, threshold breaches, dormant-account
+  reactivation, and more (zero model involvement in compliance decisions)
+- **Cross-lingual KB retrieval** — a ~42-chunk regulatory corpus (7 documents)
+  indexed per language; queries retrieve across all three
 - **Report drafting** — after rules fire, the LLM drafts a human-readable
   compliance note (the model narrates findings; it cannot add, remove, or
   reclassify alerts)
@@ -29,19 +29,19 @@ A TUI (terminal) agent that runs entirely on-device:
 ## Quick Start
 
 ```bash
-# 1. Clone + install dependencies
+# 1. Clone + build (Go 1.25, zero CGo)
 git clone https://github.com/BROCKUGANDA/kanzu-agent.git
 cd kanzu-agent
-bash scripts/setup.sh          # installs Go, llama.cpp, Python deps
+CGO_ENABLED=0 go build -mod=vendor -o bin/kanzu ./cmd/kanzu   # bin/kanzu.exe on Windows
 
 # 2. Download the model (Qwen2.5-1.5B Q4_K_M, ~1 GB)
-bash download_model.sh
+bash scripts/download_model.sh
 
 # 3. Initialise the local SQLite ledger + KB index
-kanzu init
+./bin/kanzu init
 
 # 4. Run the TUI
-kanzu serve
+./bin/kanzu chat
 ```
 
 ### Quick Commands (outside the TUI)
@@ -79,15 +79,15 @@ internal/
   agent/             Planner (PLAN → GATE → EVIDENCE → NARRATE)
   rules/             Deterministic AML rule engine (SQL-based)
   ledger/            SQLite schema + migrations
-  llm/               llama.cpp CGo bindings + prompt runner
+  llm/               llama.cpp subprocess invocation + prompt runner
   tui/               Bubble Tea full-screen interface
   i18n/              Trilingual prompt templates + translations
   thermal/           CPU duty-cycle governor (70% target)
-  rag/               Cross-lingual KB indexing (FAISS-style)
+  rag/               Cross-lingual KB indexing (SQLite FTS5/BM25)
 knowledge/           Regulatory corpus (EN/SW/LG chunks)
-  en/                1,000 chunks — Uganda AML Act, FAA guidelines
-  sw/                1,000 chunks — Swahili regulatory translations
-  lg/                1,000 chunks — Luganda community guidance
+  en/                20 chunks — Uganda AML Act, FAA guidelines (3 documents)
+  sw/                15 chunks — Swahili regulatory translations (2 documents)
+  lg/                7 chunks — Luganda community guidance (2 documents)
 var/prompts/         6 versioned system prompts (planning + narration × 3 langs)
 ```
 
@@ -108,12 +108,11 @@ workflow. The model **cannot** add, remove, or reclassify alerts.
 | First-token latency | 15.7 s |
 | Accuracy (arc_easy, acc_norm) | 0.76 (50 samples) |
 | Seed | 42 |
-| Git commit | 8b8e8902fe88 |
+| Git commit | 8c1a6f9dca68 |
 | RAM | 1.7 GB peak (within 8 GB budget) |
 | Thermal | No throttling (70% duty cycle governor) |
 
-Full results in [`submission.json`](submission.json). Methodology in
-[`docs/demo/record_profiler.md`](docs/demo/).
+Full results in [`submission.json`](submission.json).
 
 ## Demo Video
 
@@ -130,7 +129,7 @@ A 2-minute walkthrough (`docs/demo/kanzu-agent-demo.mp4`) covers:
 - **[REPORT.md](REPORT.md)** — full technical report (architecture, datasets,
   training, offline verification, trilingual strategy, submission checklist)
 - **[AGENTS.md](AGENTS.md)** — contributor guide + development commands
-- **[docs/](docs/)** — getting started, environment variables, architecture index
+- **[docs/](docs/)** — demo video assets and screen-recording scripts
 - **[.github/workflows/](.github/)** — CI (Spectral lint, Docker build, Go tests)
 
 ## Project Structure
@@ -153,7 +152,7 @@ kanzu-agent/
 
 ## Technical Stack
 
-- **Runtime:** Go 1.22+ (CGo for llama.cpp FFI)
+- **Runtime:** Go 1.25 (zero CGo; llama.cpp invoked as a subprocess)
 - **LLM:** Qwen2.5-1.5B-Instruct Q4_K_M via llama.cpp (offline)
 - **TUI:** Charmbracelet Bubble Tea + Lipgloss
 - **Ledger:** SQLite (SQLCipher-compatible)
