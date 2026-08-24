@@ -65,3 +65,7 @@ Thumbs.db
 .idea/
 .vscode/
 *.swp
+
+# ── Personal local helper scripts (WSL paths, machine-specific) ───────────────
+var/
+!var/prompts/
