@@ -73,7 +73,7 @@
     "throttled": false
   },
   "reproducibility": {
-    "git_commit_sha": "8b8e8902fe88",
+    "git_commit_sha": "8c1a6f9dca6815bb26b6f6fde7410ec8b5ca96c5",
     "docker_image_digest": "unknown",
     "random_seed": 42
   },

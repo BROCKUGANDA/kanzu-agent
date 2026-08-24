@@ -623,27 +623,24 @@ and the broader East Africa region:
    outages. A cloud-dependent compliance tool is not viable for this user base.
 
 3. **Language inclusion:** Kiswahili is a regional lingua franca across Uganda,
-   Tanzania, Kenya, and the DRC. The bilingual capability is built in from the
-   knowledge base (5 documents, 2 languages) through the rule engine (Kiswahili
-   alert titles) to the model system prompt (`prompt-narration-sw.txt`). A branch
-   officer in any East African SACCO receives a complete compliance narrative without
-   an English intermediary.
+   Tanzania, Kenya, and the DRC. Trilingual capability is built in from the
+   knowledge base (7 documents, 3 languages: English, Kiswahili, Luganda)
+   through the rule engine (trilingual alert titles) to the model system
+   prompt (`prompt-narration-sw.txt`). A branch officer in any East African
+   SACCO receives a complete compliance narrative without an English intermediary.
 
 4. **Privacy-preserving design:** Uganda's Data Protection and Privacy Act 2019
    creates obligations around personal data transfer. The offline-by-design
    architecture means no member data ever leaves the device.
 
-5. **Cost accessibility:** The total marginal cost to a Ugandan SACCO is the
-   electricity to power the laptop. No API fees, no subscriptions, no vendor lock-in.
-
-6. **Regulatory alignment:** The eight rules (R01–R08) are calibrated to Ugandan
+6. **Regulatory alignment:** The ten rules (R01–R10) are calibrated to Ugandan
    thresholds (UGX 28,000,000 reporting threshold, UGX 5,600,000 KYC-1 ceiling)
    and derived from FATF Recommendations as interpreted under Uganda's AMLA 2013.
    The knowledge base cites AMLA, UMRA, and FIA so every narrative is citable.
 
 ---
 
-## 14. Demo Video
+## 13. Demo Video
 
 A 2-minute demo video (`docs/demo/kanzu-agent-demo.mp4`) walks through the
 end-to-end offline compliance workflow on the target laptop spec:
@@ -673,11 +670,11 @@ screen capture in OBS Studio. The underlying terminal session uses the same
 
 ---
 
-## 13. Submission Checklist
+## 14. Submission Checklist
 
 | Item | Status |
 |------|--------|
-| `metadata.json` — team_id, submitter fields | ⚠️ Fill before submitting |
+| `metadata.json` — team_id, submitter fields | ✅ team_id 1148777; submitter fields filled |
 | `metadata.json` — exactly 2 test prompts | ✅ `tp_001` (EN) + `tp_002` (SW, Uganda/UGX) |
 | `download_model.sh` — public URL, no credentials, SHA-256 verified | ✅ |
 | Model path matches `_runtime.model_path` | ✅ `model/Qwen2.5-1.5B-Instruct-Q4_K_M.gguf` |
