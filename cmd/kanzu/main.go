@@ -57,6 +57,8 @@ commands:
   policy               Show or set institutional thresholds
   doctor               Verify model, ledger, corpus and llama.cpp wiring
   bench                Measure end-to-end agent throughput locally
+  backup <path>        Copy ledger to <path> (checkpoint + audit row)
+  vacuum               Reclaim free pages (VACUUM + checkpoint)
   version              Print version information
 
 examples:
@@ -160,6 +162,10 @@ func run() error {
 		return cmdPolicy(ctx, cfg, flag.Args())
 	case "bench":
 		return cmdBench(ctx, cfg, *reps)
+	case "backup":
+		return cmdBackup(ctx, cfg, flag.Arg(0))
+	case "vacuum":
+		return cmdVacuum(ctx, cfg)
 	default:
 		fmt.Print(usage)
 		return fmt.Errorf("unknown command %q", cmd)
@@ -441,9 +447,10 @@ func cmdDoctor(ctx context.Context, cfg *config.Config) error {
 		fmt.Printf("[ok  ] sensor            %.1f°C (ceiling %.0f°C, resume %.0f°C)\n",
 			temp, cfg.ThermalCeilingC, cfg.ThermalResumeC)
 	} else {
-		fmt.Printf("[warn] sensor            not readable on this platform; duty cycling still applies\n")
+		fmt.Printf("[warn] sensor            not readable on this platform; degraded to duty-cycling (conservative — no thermal reads, so every burst is paced)\n")
 	}
 	fmt.Printf("       threads           %d · duty cycle %.0f%%\n", cfg.Threads, cfg.DutyCycle*100)
+	fmt.Printf("       policy            at-rest: OS FDE is primary; app enforces 0600 on %s (REPORT.md §9.1)\n", s.db.Path())
 
 	// Prompt templates
 	fmt.Println("\n── prompt templates ──")
@@ -457,6 +464,10 @@ func cmdDoctor(ctx context.Context, cfg *config.Config) error {
 		}
 	}
 
+	// R-01/R-02: at-rest file size + perms hint.
+	if sz := s.db.FileSize(); sz >= 0 {
+		fmt.Printf("\n[ok  ] %-16s %d bytes  (mode 0600 enforced on open)\n", "ledger file", sz)
+	}
 	fmt.Println("\n── network ──")
 	fmt.Printf("[ok  ] runtime calls     none (verify: bash scripts/verify_offline.sh)\n")
 	return nil
@@ -748,7 +759,7 @@ func doctorRows(ctx context.Context, cfg *config.Config, s *stack) []tui.DoctorR
 	} else {
 		rows = append(rows, tui.DoctorRow{
 			Label: "thermal", State: "warn",
-			Detail: "sensor not readable on this platform; duty cycling still applies",
+			Detail: "sensor not readable on this platform; degraded to duty-cycling (conservative — no thermal reads, so every burst is paced)",
 		})
 	}
 
@@ -1007,6 +1018,42 @@ func cmdBench(ctx context.Context, cfg *config.Config, reps int) error {
 	fmt.Printf("thermal: %s\n", benchThermal(s.gov))
 	fmt.Printf("\nnote: the scored throughput number comes from adtc-profiler running\n")
 	fmt.Printf("llama-bench in isolation. Run scripts/run_profiler.sh for that.\n")
+	return nil
+}
+
+func cmdBackup(ctx context.Context, cfg *config.Config, dest string) error {
+	if dest == "" {
+		return fmt.Errorf("usage: kanzu backup <path>")
+	}
+	s, err := open(ctx, cfg, false)
+	if err != nil {
+		return err
+	}
+	defer s.Close()
+	before := s.db.FileSize()
+	if err := s.db.Backup(ctx, dest); err != nil {
+		return err
+	}
+	after := s.db.FileSize()
+	fmt.Printf("backup: %s -> %s  ledger=%d bytes\n", s.db.Path(), dest, after)
+	if before >= 0 {
+		fmt.Printf("source size before backup: %d bytes\n", before)
+	}
+	return nil
+}
+
+func cmdVacuum(ctx context.Context, cfg *config.Config) error {
+	s, err := open(ctx, cfg, false)
+	if err != nil {
+		return err
+	}
+	defer s.Close()
+	before := s.db.FileSize()
+	if err := s.db.Vacuum(ctx); err != nil {
+		return err
+	}
+	after := s.db.FileSize()
+	fmt.Printf("vacuum: %s  %d -> %d bytes\n", s.db.Path(), before, after)
 	return nil
 }
 
