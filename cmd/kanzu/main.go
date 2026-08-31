@@ -59,6 +59,8 @@ commands:
   bench                Measure end-to-end agent throughput locally
   backup <path>        Copy ledger to <path> (checkpoint + audit row)
   vacuum               Reclaim free pages (VACUUM + checkpoint)
+  encrypt-db <dst>     Encrypt ledger to <dst> (AES-GCM, needs KANZU_DB_KEY)
+  decrypt-db <dst>     Decrypt ledger to <dst> (needs KANZU_DB_KEY)
   version              Print version information
 
 examples:
@@ -166,6 +168,10 @@ func run() error {
 		return cmdBackup(ctx, cfg, flag.Arg(0))
 	case "vacuum":
 		return cmdVacuum(ctx, cfg)
+	case "encrypt-db":
+		return cmdEncryptDB(ctx, cfg, flag.Arg(0))
+	case "decrypt-db":
+		return cmdDecryptDB(ctx, cfg, flag.Arg(0))
 	default:
 		fmt.Print(usage)
 		return fmt.Errorf("unknown command %q", cmd)
@@ -1054,6 +1060,53 @@ func cmdVacuum(ctx context.Context, cfg *config.Config) error {
 	}
 	after := s.db.FileSize()
 	fmt.Printf("vacuum: %s  %d -> %d bytes\n", s.db.Path(), before, after)
+	return nil
+}
+
+func cmdEncryptDB(_ context.Context, cfg *config.Config, dest string) error {
+	if dest == "" {
+		return fmt.Errorf("usage: kanzu encrypt-db <path>")
+	}
+	key := os.Getenv("KANZU_DB_KEY")
+	if key == "" {
+		return fmt.Errorf("encrypt-db: set KANZU_DB_KEY (passphrase) in environment")
+	}
+	src := cfg.DBPath
+	if _, err := os.Stat(src); err != nil {
+		return fmt.Errorf("encrypt-db: source %s: %w", src, err)
+	}
+	if err := ledger.EncryptFile(src, dest, key); err != nil {
+		return err
+	}
+	fi, _ := os.Stat(dest)
+	fmt.Printf("encrypt-db: %s -> %s  %d bytes  header=KANZU_ENC\n", src, dest, fi.Size())
+	return nil
+}
+
+func cmdDecryptDB(_ context.Context, cfg *config.Config, dest string) error {
+	if dest == "" {
+		return fmt.Errorf("usage: kanzu decrypt-db <path>")
+	}
+	key := os.Getenv("KANZU_DB_KEY")
+	if key == "" {
+		return fmt.Errorf("decrypt-db: set KANZU_DB_KEY in environment")
+	}
+	src := cfg.DBPath
+	if _, err := os.Stat(src); err != nil {
+		return fmt.Errorf("decrypt-db: source %s: %w", src, err)
+	}
+	enc, err := ledger.IsEncrypted(src)
+	if err != nil {
+		return err
+	}
+	if !enc {
+		return fmt.Errorf("decrypt-db: %s is not encrypted (no KANZU_ENC header)", src)
+	}
+	if err := ledger.DecryptFile(src, dest, key); err != nil {
+		return err
+	}
+	fi, _ := os.Stat(dest)
+	fmt.Printf("decrypt-db: %s -> %s  %d bytes\n", src, dest, fi.Size())
 	return nil
 }
 
