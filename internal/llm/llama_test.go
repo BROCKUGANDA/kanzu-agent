@@ -1,6 +1,9 @@
 package llm
 
-import "testing"
+import (
+	"os"
+	"testing"
+)
 
 // Real stderr from the pinned b10580 build (common_perf_print, timestamped).
 // Regression guard: an earlier prefix gate only accepted `llama_perf` /
@@ -117,5 +120,40 @@ build: 10580 (54ee5ee64) with GNU 11.4.0 for Linux x86_64
 
 	if got.LoadMS != 0 || got.GeneratedTokens != 0 || got.GenerationTPS != 0 {
 		t.Errorf("unrelated lines produced numbers: %+v", got)
+	}
+}
+
+// TestWritePromptCleanupNotKeep verifies the default behaviour: a successful
+// writePrompt returns a cleanup that removes the file. F-04 regression —
+// pre-fix, the cleanup was conditional and a write failure could leak the
+// temp file into os.TempDir().
+func TestWritePromptCleanupNotKeep(t *testing.T) {
+	dir := t.TempDir()
+	r := &Runner{TmpDir: dir, KeepPrompts: false}
+	name, cleanup, err := r.writePrompt("hello")
+	if err != nil {
+		t.Fatalf("writePrompt: %v", err)
+	}
+	if _, err := os.Stat(name); err != nil {
+		t.Fatalf("expected file to exist right after write: %v", err)
+	}
+	cleanup()
+	if _, err := os.Stat(name); !os.IsNotExist(err) {
+		t.Errorf("expected file removed after cleanup, stat err = %v", err)
+	}
+}
+
+// TestWritePromptCleanupKeep verifies the audit/demo opt-in: when KeepPrompts
+// is true the file stays on disk after cleanup.
+func TestWritePromptCleanupKeep(t *testing.T) {
+	dir := t.TempDir()
+	r := &Runner{TmpDir: dir, KeepPrompts: true}
+	name, cleanup, err := r.writePrompt("hello")
+	if err != nil {
+		t.Fatalf("writePrompt: %v", err)
+	}
+	cleanup()
+	if _, err := os.Stat(name); err != nil {
+		t.Errorf("expected file retained under KeepPrompts: %v", err)
 	}
 }

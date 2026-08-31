@@ -753,7 +753,10 @@ func cmdScan(ctx context.Context, cfg *config.Config, days int, member string) e
 	}
 	defer s.Close()
 
+	// F-06: same default-window warning as cmdReport — a 7-day scan with no
+	// alerts is a real signal only when the operator asked for 7 days.
 	if days <= 0 {
+		fmt.Fprintln(os.Stderr, "note: no -days supplied; defaulting to last 7 days. Pass -days N to scan a different window.")
 		days = 7
 	}
 	lang := i18n.Parse(cfg.Lang)
@@ -796,7 +799,11 @@ func cmdScan(ctx context.Context, cfg *config.Config, days int, member string) e
 }
 
 func cmdReport(ctx context.Context, cfg *config.Config, days int, member string, noModel bool) error {
+	// F-06: announce the resolved window before any work runs, so an operator
+	// who forgot `-days 30` sees a clear "defaulting to 7 days" notice
+	// instead of a quiet 7-day result that looks like "no alerts".
 	if days <= 0 {
+		fmt.Fprintln(os.Stderr, "note: no -days supplied; defaulting to last 7 days. Pass -days N to scan a different window.")
 		days = 7
 	}
 	request := fmt.Sprintf("draft a compliance note for the last %d days", days)

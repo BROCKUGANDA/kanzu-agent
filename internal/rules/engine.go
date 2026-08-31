@@ -827,17 +827,25 @@ func detectThresholdHugging(in input) (Finding, bool) {
 // of savings. Detection: credits to distinct internal destination accounts
 // exceed the threshold and the net outflow from any single account within the
 // window exceeds the cycling_outflow_pct of total inflow.
+//
+// F-03: this rule reads Txn.CounterpartyAccount, NOT Txn.Country. The two
+// fields were overloaded before this fix and R09 stole the ISO-3166 country
+// code out from under R06_CROSS_BORDER_EXPOSURE; a domestic transfer to a
+// different sub-account would silence the country watchlist. The two
+// detectors are now strictly separated.
 func detectMultiAccountCycling(ctx context.Context, in input) (Finding, bool, error) {
 	windowHours := in.policy.Int("cycling_window_hours", 48)
 	minAccounts := int(in.policy.Int("cycling_min_accounts", 3))
 	window := time.Duration(windowHours) * time.Hour
 
-	// Group transactions by destination account to count distinct accounts.
+	// Group transactions by destination account. CounterpartyAccount is the
+	// canonical source; fall back to Channel only when CounterpartyAccount is
+	// blank (older fixtures) and never to Country, which has its own meaning.
 	destAccounts := map[string][]ledger.Txn{}
 	for _, t := range in.txns {
-		dest := strings.TrimSpace(t.Country) // reuse Country field as counterparty tag
+		dest := strings.TrimSpace(t.CounterpartyAccount)
 		if dest == "" {
-			dest = t.Channel
+			dest = strings.TrimSpace(t.Channel)
 		}
 		destAccounts[dest] = append(destAccounts[dest], t)
 	}
@@ -870,7 +878,7 @@ func detectMultiAccountCycling(ctx context.Context, in input) (Finding, bool, er
 			bestIDs = append([]string(nil), ids...)
 		}
 	}
-	if len(bestIDs) < 2 || bestTotal == 0 {
+	if bestIDs == nil || bestTotal == 0 {
 		return Finding{}, false, nil
 	}
 

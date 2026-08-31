@@ -56,6 +56,7 @@ CREATE TABLE IF NOT EXISTS transactions (
     currency            TEXT NOT NULL DEFAULT 'UGX',
     counterparty        TEXT,
     counterparty_country TEXT,                    -- ISO-3166 alpha-2
+    counterparty_account TEXT,                    -- destination sub-account for R09 cycling; distinct from country
     narrative           TEXT,
     reference           TEXT
 );
@@ -127,14 +128,51 @@ CREATE TABLE IF NOT EXISTS policy (
 );
 
 CREATE TABLE IF NOT EXISTS audit_log (
-    id      INTEGER PRIMARY KEY AUTOINCREMENT,
-    ts      TEXT NOT NULL,
-    actor   TEXT NOT NULL,
-    action  TEXT NOT NULL,
-    subject TEXT NOT NULL DEFAULT '',
-    detail  TEXT NOT NULL DEFAULT ''
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    ts         TEXT NOT NULL,
+    actor      TEXT NOT NULL,
+    action     TEXT NOT NULL,
+    subject    TEXT NOT NULL DEFAULT '',
+    detail     TEXT NOT NULL DEFAULT '',
+    -- prev_hash is the sha256 of the previous audit_log entry's row contents
+    -- ("id|ts|actor|action|subject|detail|prev_hash"). The genesis row carries
+    -- prev_hash = 64-char zero string. This makes the table tamper-evident:
+    -- re-writing any historical row invalidates every hash that follows it.
+    prev_hash  TEXT NOT NULL DEFAULT '0000000000000000000000000000000000000000000000000000000000000000',
+    row_hash   TEXT NOT NULL DEFAULT ''
 );
 CREATE INDEX IF NOT EXISTS idx_audit_ts ON audit_log(ts);
+
+-- Forbid the two operations that would break the chain. UPDATEs that ONLY set
+-- row_hash on the just-inserted row are allowed (the writer does this once
+-- per row inside the same transaction). Any other UPDATE/DELETE is rejected.
+-- The detail field is read-only after the row leaves the transaction.
+CREATE TRIGGER IF NOT EXISTS audit_log_no_update
+BEFORE UPDATE ON audit_log
+WHEN NOT (
+    -- Allow: setting row_hash on the row whose id matches its own previous
+    -- value (i.e., we are setting row_hash from NULL/'' to the real hash).
+    -- Detect this by checking that the OLD row_hash is empty (the writer
+    -- inserts with row_hash='' and the trigger fires before the UPDATE applies).
+    OLD.row_hash = ''
+    AND NEW.row_hash <> ''
+    AND NEW.id = OLD.id
+    AND NEW.ts = OLD.ts
+    AND NEW.actor = OLD.actor
+    AND NEW.action = OLD.action
+    AND NEW.subject = OLD.subject
+    AND NEW.detail = OLD.detail
+    AND NEW.prev_hash = OLD.prev_hash
+)
+BEGIN
+    SELECT RAISE(ABORT, 'audit_log is append-only: UPDATE is forbidden (F-02 tamper-evidence)');
+END;
+
+CREATE TRIGGER IF NOT EXISTS audit_log_no_delete
+BEFORE DELETE ON audit_log
+BEGIN
+    SELECT RAISE(ABORT, 'audit_log is append-only: DELETE is forbidden (F-02 tamper-evidence)');
+END;
 
 -- Retrieval corpus. FTS5 keeps the inverted index on disk and only materialises
 -- the rows a query actually matches, so a growing knowledge base costs disk

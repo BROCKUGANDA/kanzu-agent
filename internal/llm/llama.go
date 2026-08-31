@@ -290,9 +290,11 @@ func (r *Runner) Generate(ctx context.Context, req Request) (*Result, error) {
 	if err != nil {
 		return nil, err
 	}
-	if !r.KeepPrompts {
-		defer cleanup()
-	}
+	// F-04: register cleanup before any further work, so even a panic inside
+	// capabilities() or a write-failure below still removes the prompt file.
+	// The cleanup is idempotent (os.Remove returns an error we ignore when the
+	// file is already gone).
+	defer cleanup()
 
 	args := []string{
 		"-m", r.ModelPath,
@@ -369,6 +371,10 @@ func (r *Runner) Generate(ctx context.Context, req Request) (*Result, error) {
 	return res, nil
 }
 
+// writePrompt materialises a prompt string to a unique temp file in TmpDir
+// (or os.TempDir() when TmpDir is empty). Returns the path and a cleanup
+// function that removes it; the cleanup is a no-op when KeepPrompts is set
+// (so demo and audit workflows can inspect the on-disk prompt afterwards).
 func (r *Runner) writePrompt(prompt string) (string, func(), error) {
 	dir := r.TmpDir
 	if dir == "" {
@@ -391,7 +397,16 @@ func (r *Runner) writePrompt(prompt string) (string, func(), error) {
 		os.Remove(name)
 		return "", func() {}, err
 	}
-	return name, func() { os.Remove(name) }, nil
+	// F-04: cleanup is always registered. Whether it removes the file is
+	// gated by KeepPrompts so callers that want audit trail material can
+	// opt in. Idempotent across double-defer / panic paths.
+	cleanup := func() {
+		if r.KeepPrompts {
+			return
+		}
+		_ = os.Remove(name)
+	}
+	return name, cleanup, nil
 }
 
 // cleanCompletion strips the artefacts llama-cli leaves around generated text.

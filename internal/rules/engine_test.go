@@ -52,6 +52,13 @@ func withChannel(t ledger.Txn, channel string) ledger.Txn {
 	return t
 }
 
+// withAccount sets CounterpartyAccount on a transaction — the dedicated
+// field introduced for the R09 multi-account cycling detector (F-03).
+func withAccount(t ledger.Txn, account string) ledger.Txn {
+	t.CounterpartyAccount = account
+	return t
+}
+
 func setup(t *testing.T, f fixture) (*Engine, context.Context) {
 	t.Helper()
 	db, err := ledger.Open(filepath.Join(t.TempDir(), "test.db"))
@@ -333,18 +340,19 @@ func TestRuleDetectors(t *testing.T) {
 		{
 			name:   "R09 multi-account cycling",
 			ruleID: RuleMultiAcctCycle,
-			// Funds credited across three sub-accounts (counterparty tags, as
-			// in the boda-boda cooperative pattern) with a large onward debit
-			// inside 48h. Outflow UGX 10M >= a quarter of the 28M threshold.
+			// Funds credited across three sub-accounts (F-03: distinct
+			// CounterpartyAccount values, NOT distinct Country codes) with
+			// a large onward debit inside 48h. Outflow UGX 10M >= a quarter
+			// of the 28M threshold.
 			fires: fixture{member: member(2), txns: []ledger.Txn{
-				withChannel(txn("T-31", 1, 9, "credit", 1_200_000_000), "SUB-A"),
-				withChannel(txn("T-32", 1, 10, "credit", 800_000_000), "SUB-B"),
-				withChannel(txn("T-33", 2, 16, "debit", 1_000_000_000), "SUB-C"),
+				withAccount(txn("T-31", 1, 9, "credit", 1_200_000_000), "SUB-A"),
+				withAccount(txn("T-32", 1, 10, "credit", 800_000_000), "SUB-B"),
+				withAccount(txn("T-33", 2, 16, "debit", 1_000_000_000), "SUB-C"),
 			}},
 			clean: fixture{member: member(2), txns: []ledger.Txn{
 				// Only two destination accounts: ordinary transfers.
-				withChannel(txn("T-34", 1, 9, "credit", 1_200_000_000), "SUB-A"),
-				withChannel(txn("T-35", 2, 16, "debit", 1_000_000_000), "SUB-C"),
+				withAccount(txn("T-34", 1, 9, "credit", 1_200_000_000), "SUB-A"),
+				withAccount(txn("T-35", 2, 16, "debit", 1_000_000_000), "SUB-C"),
 			}},
 			check: func(t *testing.T, f Finding) {
 				if f.Facts.Count < 3 {
@@ -452,5 +460,31 @@ func TestScanDeterministic(t *testing.T) {
 			fmt.Sprint(first[i].TxnIDs) != fmt.Sprint(second[i].TxnIDs) {
 			t.Errorf("finding %d differs between identical runs", i)
 		}
+	}
+}
+
+// TestR09AndR06Separation is the F-03 regression test: the cycling rule must
+// not fire when only Country differs (because Country is the R06 field), and
+// the cross-border rule must fire on the same data. Before F-03, both
+// detectors fought over Txn.Country and either could silently suppress the
+// other depending on which row visited the rule first.
+func TestR09AndR06Separation(t *testing.T) {
+	f := fixture{member: member(2), txns: []ledger.Txn{
+		// One SY credit, one KP credit, one YE debit — three distinct Country
+	// values, but CounterpartyAccount is empty for all. R09 should NOT
+	// fire; R06 SHOULD fire on the SY/KP/YE watchlist countries.
+	withCountry(withAccount(txn("X-01", 1, 10, "credit", 1_200_000_000), ""), "SY"),
+		withCountry(withAccount(txn("X-02", 1, 11, "credit", 800_000_000), ""), "KP"),
+		withCountry(withAccount(txn("X-03", 2, 16, "debit", 1_000_000_000), ""), "YE"),
+	}}
+	eng, ctx := setup(t, f)
+
+	cycle := scanOne(t, eng, ctx, RuleMultiAcctCycle)
+	if len(cycle) != 0 {
+		t.Errorf("R09 fired on Country-only data: %+v — F-03 regression", cycle)
+	}
+	cross := scanOne(t, eng, ctx, RuleCrossBorder)
+	if len(cross) != 1 {
+		t.Errorf("R06 should fire on SY/KP/YE data, got %d findings", len(cross))
 	}
 }

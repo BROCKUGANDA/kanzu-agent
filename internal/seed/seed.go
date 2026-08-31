@@ -37,6 +37,15 @@ type Report struct {
 // re-seeding does not duplicate rows or manufacture a false velocity alert. The
 // anchor date is truncated to midnight UTC so repeated runs on the same day
 // produce identical timestamps.
+// Required columns: the engine's strict-mode reads these. counterparty_account
+// was added later (F-03) and is optional — its absence is treated as empty
+// strings, so older fixtures keep seeding cleanly while new rows can address
+// the dedicated column for the R09 cycling rule.
+var txnRequired = []string{
+	"txn_id", "member_id", "day_offset", "time", "direction", "channel",
+	"amount", "currency", "counterparty", "country", "narrative",
+}
+
 func Load(ctx context.Context, db *ledger.DB, fixturesDir string, now time.Time) (Report, error) {
 	var rep Report
 	anchor := now.UTC().Truncate(24 * time.Hour)
@@ -88,10 +97,7 @@ func Load(ctx context.Context, db *ledger.DB, fixturesDir string, now time.Time)
 		rep.Accounts++
 	}
 
-	txns, err := readCSV(txnPath, []string{
-		"txn_id", "member_id", "day_offset", "time", "direction", "channel",
-		"amount", "currency", "counterparty", "country", "narrative",
-	})
+	txns, err := readCSV(txnPath, txnRequired)
 	if err != nil {
 		return rep, err
 	}
@@ -117,18 +123,19 @@ func Load(ctx context.Context, db *ledger.DB, fixturesDir string, now time.Time)
 
 		memberID := strings.ToUpper(row["member_id"])
 		t := ledger.Txn{
-			ID:           row["txn_id"],
-			AccountID:    "A-" + strings.TrimPrefix(memberID, "M-"),
-			MemberID:     memberID,
-			TS:           ts,
-			Direction:    strings.ToLower(row["direction"]),
-			Channel:      strings.ToLower(row["channel"]),
-			AmountMinor:  minor,
-			Currency:     orDefault(row["currency"], "UGX"),
-			Counterparty: row["counterparty"],
-			Country:      strings.ToUpper(row["country"]),
-			Narrative:    row["narrative"],
-			Reference:    row["txn_id"],
+			ID:                  row["txn_id"],
+			AccountID:           "A-" + strings.TrimPrefix(memberID, "M-"),
+			MemberID:            memberID,
+			TS:                  ts,
+			Direction:           strings.ToLower(row["direction"]),
+			Channel:             strings.ToLower(row["channel"]),
+			AmountMinor:         minor,
+			Currency:            orDefault(row["currency"], "UGX"),
+			Counterparty:        row["counterparty"],
+			Country:             strings.ToUpper(row["country"]),
+			CounterpartyAccount: row["counterparty_account"],
+			Narrative:           row["narrative"],
+			Reference:           row["txn_id"],
 		}
 		if t.Direction != "credit" && t.Direction != "debit" {
 			return rep, fmt.Errorf("%s row %d: direction must be credit or debit, got %q",

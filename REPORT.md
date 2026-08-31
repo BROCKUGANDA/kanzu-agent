@@ -483,14 +483,38 @@ model):
 
 | Property | Evidence |
 |----------|----------|
-| Zero network at runtime | `unshare -n` proof; no `net/http` in runtime code |
-| No API keys or cloud services | No configuration field for external credentials |
-| No telemetry | `kanzu doctor` confirms `runtime_network_calls: none` |
-| Immutable deterministic findings | System prompt forbids model from adding, removing, or reclassifying alerts |
+| Zero network at runtime | **Authoritative proof:** `bash scripts/verify_offline.sh` runs the full pipeline inside a Linux network namespace (`unshare -n`) where every socket() call fails. **Static check:** `grep -rn --include='*.go' '"net/http"' cmd internal` returns zero hits, and `go list -deps ./cmd/kanzu \| grep '^net/'` is empty — verified in `offline-check` CI job. **`kanzu doctor`** prints `[ok  ] runtime calls none` as the at-a-glance summary, not as the proof. |
+| No API keys or cloud services | No configuration field for external credentials. The runtime has no network path to leak them through. |
+| No telemetry | Same proof as "zero network at runtime": no socket exists to call home. |
+| Immutable deterministic findings | System prompt forbids model from adding, removing, or reclassifying alerts; `Engine.Scan` is the sole writer of `ledger.Alert`. |
+| Tamper-evident audit trail | `audit_log` rows carry a SHA-256 hash chain (`prev_hash`, `row_hash`) plus `audit_log_no_update` / `audit_log_no_delete` triggers that reject post-hoc rewriting at the SQL level. `DB.VerifyAuditChain()` walks the table and detects any tampering. |
 | No criminal adjudication | System prompt: *"Never state or imply that a member committed a crime"* |
-| Reproducible inference | Every prompt saved to `var/prompts/`; any generation replayable from its file |
-| Audit trail | Every `execute` call logged to `audit_log` with request text and detail string |
+| Reproducible inference | Every prompt saved to `var/prompts/`; any generation replayable from its file. Inference defaults to `Seed=42`; per-inference temp 0.25, top_p 0.9, repeat-penalty 1.15. |
+| Audit trail | Every `execute` call logged to `audit_log` with request text and detail string, inside a single transaction that establishes the hash chain atomically. |
 | Human review gate | All outputs carry the footer: *"A human compliance officer must review and sign before any regulatory filing"* |
+
+### 9.1 Data-at-rest (F-01)
+
+The local SQLite ledger (`var/kanzu.db`) is **not encrypted at rest**. The driver
+is `modernc.org/sqlite` (pure-Go transpilation of SQLite), which does not bundle
+SQLCipher. This is a conscious trade-off, not an oversight:
+
+| Trade-off axis | Decision |
+|---|---|
+| **Build constraint** | ADTC submission must build with zero CGO; SQLCipher requires CGO. |
+| **Data controller** | The compliance officer running the tool *is* the data controller — the DB never leaves the machine. |
+| **Threat model** | Laptop theft while powered down. Mitigated by full-disk encryption at the OS layer, which is out of scope for this submission. |
+| **Field-level minimisation** | `members.id_ref` is stored as "last 4 only" by design (`schema.go`), so the highest-value PII (full document number) is structurally absent. |
+| **Residual risk** | An attacker with the DB file and read access can recover transactions and KYC status. Acceptable for the ADTC threat model; **not** acceptable for a SOC2/PCI-DSS deployment, which would need either OS-level FDE or a SQLCipher build. |
+
+For a SOC2-tier deployment, the recipe is:
+
+1. Swap `modernc.org/sqlite` → `mattn/go-sqlite3` with `-tags sqlite_fts5,sqlite_json` (reintroduces CGO).
+2. Link SQLCipher (`brew install sqlcipher` on macOS, `apt install libsqlcipher-dev` on Debian).
+3. Add a `_pragma_key` to the DSN at `Open()` time, reading the passphrase from `os.Getenv("KANZU_DB_KEY")` (or from a keyring).
+4. Verify with `db.Exec("PRAGMA cipher_version")` returning a non-empty string.
+
+A working sketch is ~50 lines; not landed in this submission because it would break the zero-CGO build constraint ADTC requires.
 
 ---
 
