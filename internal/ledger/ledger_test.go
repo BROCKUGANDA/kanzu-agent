@@ -2,6 +2,7 @@ package ledger
 
 import (
 	"context"
+	"database/sql"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -222,5 +223,100 @@ func TestReaderWriterConcurrency(t *testing.T) {
 		}
 	case <-time.After(2 * time.Second):
 		t.Fatal("read blocked for >2s while writer held a transaction — F-05 regression")
+	}
+}
+
+// TestMigrationAddsMissingColumns is the F-02c / F-03e regression: an existing
+// DB (pre-this-audit) opens successfully and gets the new audit_log and
+// transactions columns back-filled on first open. The simulated old DB is
+// produced by dropping the new columns from a freshly-migrated one.
+func TestMigrationAddsMissingColumns(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "audit.db")
+
+	// Step 1: open a fresh DB to apply the current schema.
+	db, err := Open(path)
+	if err != nil {
+		t.Fatalf("open fresh: %v", err)
+	}
+	if err := db.Audit(context.Background(), "test", "warm", "", ""); err != nil {
+		t.Fatalf("warm audit: %v", err)
+	}
+	db.Close()
+
+	// Step 2: simulate the pre-audit schema (no prev_hash, no row_hash, no
+	// counterparty_account) by recreating the audit_log + transactions tables
+	// without the new columns. SQLite's `CREATE TABLE ... (new shape)` replaces
+	// the table; we copy existing rows out and back in so the row count
+	// survives.
+	scratch, err := sql.Open("sqlite", path)
+	if err != nil {
+		t.Fatalf("scratch open: %v", err)
+	}
+	if _, err := scratch.Exec(`
+		CREATE TABLE audit_log_new (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			ts TEXT NOT NULL,
+			actor TEXT NOT NULL,
+			action TEXT NOT NULL,
+			subject TEXT NOT NULL DEFAULT '',
+			detail TEXT NOT NULL DEFAULT ''
+		)`); err != nil {
+		t.Fatalf("create audit_log_new: %v", err)
+	}
+	if _, err := scratch.Exec(`INSERT INTO audit_log_new SELECT id, ts, actor, action, subject, detail FROM audit_log`); err != nil {
+		t.Fatalf("copy audit_log: %v", err)
+	}
+	if _, err := scratch.Exec(`DROP TABLE audit_log`); err != nil {
+		t.Fatalf("drop audit_log: %v", err)
+	}
+	if _, err := scratch.Exec(`ALTER TABLE audit_log_new RENAME TO audit_log`); err != nil {
+		t.Fatalf("rename audit_log_new: %v", err)
+	}
+	if _, err := scratch.Exec(`
+		CREATE TABLE transactions_new (
+			id TEXT PRIMARY KEY,
+			account_id TEXT NOT NULL,
+			member_id TEXT NOT NULL,
+			ts TEXT NOT NULL,
+			direction TEXT NOT NULL,
+			channel TEXT NOT NULL,
+			amount_minor INTEGER NOT NULL,
+			currency TEXT NOT NULL DEFAULT 'UGX',
+			counterparty TEXT,
+			counterparty_country TEXT,
+			narrative TEXT,
+			reference TEXT
+		)`); err != nil {
+		t.Fatalf("create transactions_new: %v", err)
+	}
+	if _, err := scratch.Exec(`INSERT INTO transactions_new SELECT id, account_id, member_id, ts, direction, channel, amount_minor, currency, counterparty, counterparty_country, narrative, reference FROM transactions`); err != nil {
+		t.Fatalf("copy transactions: %v", err)
+	}
+	if _, err := scratch.Exec(`DROP TABLE transactions`); err != nil {
+		t.Fatalf("drop transactions: %v", err)
+	}
+	if _, err := scratch.Exec(`ALTER TABLE transactions_new RENAME TO transactions`); err != nil {
+		t.Fatalf("rename transactions_new: %v", err)
+	}
+	scratch.Close()
+
+	// Step 3: reopen. The migration should add the missing columns, the
+	// existing audit row should back-fill prev_hash (zero hash) and row_hash
+	// (empty), and Audit() should succeed.
+	db, err = Open(path)
+	if err != nil {
+		t.Fatalf("reopen: %v", err)
+	}
+	defer db.Close()
+
+	if err := db.Audit(context.Background(), "test", "post-migration", "", ""); err != nil {
+		t.Fatalf("post-migration audit: %v", err)
+	}
+
+	// Chain should verify intact across the back-filled row + the new row.
+	if id, _, err := db.VerifyAuditChain(context.Background()); err != nil {
+		t.Fatalf("verify chain: %v", err)
+	} else if id != 0 {
+		t.Errorf("post-migration chain broken at id=%d", id)
 	}
 }

@@ -152,10 +152,11 @@ kanzu-agent/
 
 ## Technical Stack
 
-- **Runtime:** Go 1.25 (zero CGo; llama.cpp invoked as a subprocess)
-- **LLM:** Qwen2.5-1.5B-Instruct Q4_K_M via llama.cpp (offline)
-- **TUI:** Charmbracelet Bubble Tea + Lipgloss
-- **Ledger:** SQLite (SQLCipher-compatible)
-- **Rules:** SQL queries, no external dependencies
-- **Container:** Docker linux/amd64
-- **License:** MIT
+| **Runtime:** | Go 1.25 (zero CGo; llama.cpp invoked as a subprocess) |
+| **LLM:** | Qwen2.5-1.5B-Instruct-Q4_K_M via llama.cpp (offline) |
+| **TUI:** | Charmbracelet Bubble Tea + Lipgloss |
+| **Ledger:** | SQLite (modernc.org/sqlite, pure-Go, WAL mode) |
+| **Schema migrations:** | Idempotent ALTER TABLE back-fills (`applyColumnIfMissing`) — no monotonic version counters. See `internal/ledger/ledger.go::migrate`. |
+| **Rules:** | SQL queries, no external dependencies |
+| **Container:** | Docker linux/amd64 |
+| **License:** | MIT |

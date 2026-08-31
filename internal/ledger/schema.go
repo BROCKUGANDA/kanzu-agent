@@ -187,6 +187,17 @@ CREATE VIRTUAL TABLE IF NOT EXISTS kb_chunks USING fts5(
     tokenize = 'unicode61 remove_diacritics 2'
 );
 
+-- Light schema bookkeeping. The current migration system is idempotent
+-- (applyColumnIfMissing walks PRAGMA table_info), so the version number is
+-- informational only — it's stamped on every Open() so an operator can see
+-- what state their DB is in, and so a future migration system has a hook to
+-- gate on. Do NOT switch to version-monotonic migrations: the runtime checks
+-- are the load-bearing safety.
+CREATE TABLE IF NOT EXISTS schema_meta (
+    key   TEXT PRIMARY KEY,
+    value TEXT NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS kb_meta (
     key   TEXT PRIMARY KEY,
     value TEXT NOT NULL
@@ -199,6 +210,12 @@ CREATE TABLE IF NOT EXISTS kb_meta (
 // not as statutory figures. The knowledge base explains the statutory obligation
 // qualitatively and names the instrument; the number a rule fires against is
 // always the institution's own, recorded on the alert.
+//
+// N5 (additive contract): treat this list as append-only across releases.
+// Adding a new key is safe — the migration uses ON CONFLICT(key) DO NOTHING,
+// so an existing SACCO's edited value (or board vote) is preserved. Renaming
+// or removing a key is a breaking change for any operator who has set a
+// non-default value via `kanzu policy set`; deprecate rather than delete.
 var defaultPolicy = []struct {
 	Key, Value, Unit, Description string
 }{

@@ -64,8 +64,10 @@ examples:
   kanzu ask "flag suspicious transactions this week and draft a compliance note"
   kanzu -lang sw ask "chunguza miamala ya kutiliwa shaka wiki hii"
   kanzu ask "chunguza miamala" -lang sw
-  kanzu scan -days 7
-  kanzu -lang lg report -days 14
+  kanzu scan -days 7                # explicit window; -days defaults to 7 with a notice
+  kanzu -lang lg report -days 30
+  kanzu scan -days 30 -member M-001
+  kanzu -lang lg report -days 30 -member M-001
 `
 
 func main() {
@@ -387,6 +389,28 @@ func cmdDoctor(ctx context.Context, cfg *config.Config) error {
 		fmt.Printf("\n       ledger or corpus is empty — run: kanzu init\n")
 	}
 
+	// N4: an empty alerts table after a fresh init is expected, but an empty
+	// table after a scan with findings would be a real signal that something
+	// is wrong. Surface the implication only when both transactions exist
+	// and no scans have ever been recorded; let the operator's last scan
+	// speak for itself on the Reports section.
+	if counts["alerts"] == 0 && counts["transactions"] > 0 && counts["audit_log"] <= 3 {
+		fmt.Printf("[warn] %-16s no rules have fired yet — run: kanzu scan -days 30\n", "alerts")
+	}
+
+	// F-02d: audit chain integrity. The chain is the tamper-evidence surface
+	// (REPORT.md §9 row 6); if it's broken, the operator must see [FAIL]
+	// rather than [ok  ] just because the row count is positive.
+	if counts["audit_log"] > 0 {
+		if brokenID, _, err := s.db.VerifyAuditChain(ctx); err != nil {
+			fmt.Printf("[FAIL] %-16s verification error: %v\n", "audit_chain", err)
+		} else if brokenID != 0 {
+			fmt.Printf("[FAIL] %-16s broken at id=%d — see docs/HARDENING_AUDIT_2026-08-31.md §F-02\n", "audit_chain", brokenID)
+		} else {
+			fmt.Printf("[ok  ] %-16s intact\n", "audit_chain")
+		}
+	}
+
 	// Retrieval smoke test in both languages: the cross-lingual path is the
 	// african_alpha claim, so a broken lexicon must surface here.
 	fmt.Println("\n── retrieval (cross-language) ──")
@@ -677,6 +701,18 @@ func doctorRows(ctx context.Context, cfg *config.Config, s *stack) []tui.DoctorR
 		rows = append(rows, tui.DoctorRow{Label: "ledger", State: "fail", Detail: err.Error()})
 	}
 
+	// F-02d: audit chain integrity in the TUI doctor view, mirroring the CLI.
+	if counts, _ := s.db.Counts(ctx); counts != nil && counts["audit_log"] > 0 {
+		if brokenID, _, err := s.db.VerifyAuditChain(ctx); err != nil {
+			rows = append(rows, tui.DoctorRow{Label: "audit_chain", State: "fail", Detail: err.Error()})
+		} else if brokenID != 0 {
+			rows = append(rows, tui.DoctorRow{Label: "audit_chain", State: "fail",
+				Detail: fmt.Sprintf("broken at id=%d", brokenID)})
+		} else {
+			rows = append(rows, tui.DoctorRow{Label: "audit_chain", State: "ok", Detail: "intact"})
+		}
+	}
+
 	// Cross-language retrieval — the african_alpha claim gate.
 	for _, probe := range []struct {
 		q    string
@@ -806,14 +842,30 @@ func cmdReport(ctx context.Context, cfg *config.Config, days int, member string,
 		fmt.Fprintln(os.Stderr, "note: no -days supplied; defaulting to last 7 days. Pass -days N to scan a different window.")
 		days = 7
 	}
-	request := fmt.Sprintf("draft a compliance note for the last %d days", days)
-	if member != "" {
-		request += " for member " + member
-	}
-	if i18n.Parse(cfg.Lang) == i18n.SW {
+	// N1: build the planner request in the operator's session language. The
+	// pre-fix code emitted English by default and a Kiswahili branch, leaving
+	// Luganda operators with an English request routed through an auto-detect
+	// that picks up the Luganda marker anyway — but downstream, the planner
+	// prompt and KB search get the wrong language hint. Emit a Luganda request
+	// when cfg.Lang is lg so the deterministic layer sees the right intent.
+	lang := i18n.Parse(cfg.Lang)
+	var request string
+	switch lang {
+	case i18n.SW:
 		request = fmt.Sprintf("andika taarifa ya uzingatiaji kwa siku %d zilizopita", days)
-		if member != "" {
+	case i18n.LG:
+		request = fmt.Sprintf("wandiika ilani y'ebikolwa eby'okukebera ku nnaku %d eziyise", days)
+	default:
+		request = fmt.Sprintf("draft a compliance note for the last %d days", days)
+	}
+	if member != "" {
+		switch lang {
+		case i18n.SW:
 			request += " kwa mwanachama " + member
+		case i18n.LG:
+			request += " ku memba " + member
+		default:
+			request += " for member " + member
 		}
 	}
 	return cmdAsk(ctx, cfg, request, noModel)
@@ -830,6 +882,12 @@ func cmdSend(ctx context.Context, cfg *config.Config, body, peer string) error {
 	if err != nil {
 		return err
 	}
+	// N2: every state change must hit audit_log so the chain sees it. The
+	// enqueue itself is a local-state mutation the operator (and an external
+	// auditor) should be able to trace.
+	_ = s.db.Audit(ctx, "cli", "send",
+		fmt.Sprintf("peer=%s msg_id=%d", peer, id),
+		fmt.Sprintf("body_len=%d", len(body)))
 	fmt.Printf("queued inbound message #%d — process with: kanzu inbox\n", id)
 	return nil
 }
@@ -914,7 +972,12 @@ func cmdBench(ctx context.Context, cfg *config.Config, reps int) error {
 	var totalTPS float64
 	var samples int
 	for r := 0; r < reps; r++ {
-		for _, req := range requests {
+		for ri, req := range requests {
+			// N3: between-model-burst pacing so a long bench doesn't push the
+			// CPU past its thermal ceiling on a passive-cooled target. The
+			// agent.go call already wraps inference in Governor.Run; this is
+			// the inter-request gap on top of that.
+			s.gov.BatchPause(ctx, ri)
 			start := time.Now()
 			out, err := s.agent.Execute(ctx, req)
 			if err != nil {
@@ -930,6 +993,11 @@ func cmdBench(ctx context.Context, cfg *config.Config, reps int) error {
 			fmt.Printf("rep %d %-3s wall=%-7s gen=%5.1f tok/s findings=%d\n",
 				r+1, out.Plan.Lang, wall.Round(100*time.Millisecond), tps, len(out.Evidence.Findings))
 		}
+		// Larger pause between reps (F-05: actually between reps, not just
+		// between models). The bench exists to characterise the agent; an
+		// over-heated bench gives numbers that don't match what an operator
+		// would see on a single request.
+		s.gov.BatchPause(ctx, 1)
 	}
 
 	if samples > 0 {

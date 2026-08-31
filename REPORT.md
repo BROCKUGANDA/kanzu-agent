@@ -5,6 +5,9 @@
 **Model:** Qwen2.5-1.5B-Instruct-Q4_K_M (bartowski GGUF, 338 tensors, 1.54B params)
 **Runtime:** llama.cpp (subprocess, CPU-only, mmap-backed, zero network at runtime)
 **Version:** 1.0.0
+**Schema version:** 2026-08-31.1 (stamp on every Open, see `internal/ledger/ledger.go::schemaVersion`)
+
+> **Production hardening audit:** see [`docs/HARDENING_AUDIT_2026-08-31.md`](docs/HARDENING_AUDIT_2026-08-31.md) for the full per-finding status tracker (F-01 through F-07). All findings closed or documented as design trade-offs.
 
 ---
 

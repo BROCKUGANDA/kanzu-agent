@@ -10,6 +10,7 @@
 package config
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -18,6 +19,7 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
+	"unicode/utf8"
 )
 
 // Metadata mirrors the subset of metadata.json that Kanzu needs.
@@ -257,9 +259,16 @@ func (c *Config) PromptFiles() map[string]string {
 	}
 }
 
-// CheckPromptFiles verifies all six prompt templates exist and are non-empty.
+// CheckPromptFiles verifies all six prompt templates exist, are non-empty,
+// and look like prompt content (a non-trivial byte count + non-UTF8-free).
 // Returns a map of name → error (nil when the file is good).
+//
+// F-04c: the previous check accepted any non-zero-size file; a directory
+// that accidentally ships a 0-byte placeholder or a binary blob would have
+// looked fine. The new minimum-size + UTF-8 checks catch the obvious
+// cases without being overly restrictive.
 func (c *Config) CheckPromptFiles() map[string]error {
+	const minPromptBytes = 32
 	results := make(map[string]error, 6)
 	for name, path := range c.PromptFiles() {
 		st, err := os.Stat(path)
@@ -267,8 +276,29 @@ func (c *Config) CheckPromptFiles() map[string]error {
 			results[name] = fmt.Errorf("missing: %s", path)
 			continue
 		}
-		if st.Size() == 0 {
-			results[name] = fmt.Errorf("empty: %s", path)
+		if st.Size() < int64(minPromptBytes) {
+			results[name] = fmt.Errorf("too small (%d bytes, want >= %d): %s",
+				st.Size(), minPromptBytes, path)
+			continue
+		}
+		// Read just enough to validate it isn't a binary blob. Real prompts
+		// contain a system instruction in plain text; if the first 512 bytes
+		// contain NULs or invalid UTF-8, that's almost certainly a wrong
+		// file landing in the prompt directory.
+		f, err := os.Open(path)
+		if err != nil {
+			results[name] = fmt.Errorf("open: %v", err)
+			continue
+		}
+		head := make([]byte, 512)
+		n, _ := f.Read(head)
+		f.Close()
+		if bytes.IndexByte(head[:n], 0) >= 0 {
+			results[name] = fmt.Errorf("contains NUL bytes (likely binary): %s", path)
+			continue
+		}
+		if !utf8.Valid(head[:n]) {
+			results[name] = fmt.Errorf("not valid UTF-8: %s", path)
 			continue
 		}
 		results[name] = nil

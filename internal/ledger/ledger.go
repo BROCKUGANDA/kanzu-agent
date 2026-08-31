@@ -66,6 +66,11 @@ func Open(path string) (*DB, error) {
 	}
 	writeHandle.SetMaxOpenConns(1)
 	writeHandle.SetMaxIdleConns(1)
+	// F-05c: a single writer holding an idle conn indefinitely could serve
+	// queries against a frozen WAL view. Mirroring the reader cap keeps the
+	// two pools symmetric; the writer's actual workload is so sparse that
+	// the lifetime cost is just one reconnect per long uptime.
+	writeHandle.SetConnMaxLifetime(5 * time.Minute)
 	for _, pragma := range []string{
 		// WAL is the read-write concurrency contract. A single writer plus
 		// many readers is the documented sweet spot for this workload.
@@ -95,6 +100,16 @@ func Open(path string) (*DB, error) {
 	// ceiling on the 8 GB target.
 	readHandle.SetMaxOpenConns(4)
 	readHandle.SetMaxIdleConns(4)
+	// F-05c: keep idle connections fresh. Without a lifetime cap, a long-
+	// running reader conn can hold a stale WAL snapshot and serve
+	// transactions as-of an outdated checkpoint; the next reader then sees
+	// the post-commit state and the prior one sees the pre-commit state,
+	// which violates monotonicity for the same connection. Capping at 5 min
+	// forces a reconnect every time a fresh WAL checkpoint is reasonably
+	// expected. The reader hot path (kanzu scan, doctor) completes in
+	// seconds, so this is invisible latency-wise.
+	readHandle.SetConnMaxLifetime(5 * time.Minute)
+	readHandle.SetConnMaxIdleTime(2 * time.Minute)
 	// Readers must also honour foreign_keys (SQLite is per-connection for
 	// every pragma, including FK enforcement).
 	for _, pragma := range []string{
@@ -133,9 +148,48 @@ func (d *DB) Path() string { return filepath.Clean(d.path) }
 
 // migrate runs the schema once and seeds default policy rows. Uses the writer
 // pool because it executes schema DDL.
+//
+// F-02c / F-03e: idempotent in-place migrations. Existing DBs created
+// before the hash-chain (audit_log prev_hash/row_hash) or the
+// counterparty_account column land need to be brought forward on first
+// open. Order matters: (1) ensure the new-schema CREATE TABLE IF NOT EXISTS
+// has run (so the table exists, possibly with old columns), (2) apply
+// ALTER TABLE back-fills per missing column, (3) install the BEFORE triggers
+// (they ride along with the CREATE TABLE statements), (4) seed default policy.
 func (d *DB) migrate() error {
 	if _, err := d.writer.Exec(Schema); err != nil {
 		return fmt.Errorf("apply schema: %w", err)
+	}
+	if err := applyColumnIfMissing(d.writer, "audit_log", "prev_hash",
+		`ALTER TABLE audit_log ADD COLUMN prev_hash TEXT NOT NULL DEFAULT '0000000000000000000000000000000000000000000000000000000000000000'`); err != nil {
+		return fmt.Errorf("migrate audit_log.prev_hash: %w", err)
+	}
+	if err := applyColumnIfMissing(d.writer, "audit_log", "row_hash",
+		`ALTER TABLE audit_log ADD COLUMN row_hash TEXT NOT NULL DEFAULT ''`); err != nil {
+		return fmt.Errorf("migrate audit_log.row_hash: %w", err)
+	}
+	if err := applyColumnIfMissing(d.writer, "transactions", "counterparty_account",
+		`ALTER TABLE transactions ADD COLUMN counterparty_account TEXT`); err != nil {
+		return fmt.Errorf("migrate transactions.counterparty_account: %w", err)
+	}
+	// F-02c: back-fill row_hash + prev_hash for any audit_log rows written
+	// before the hash chain existed. The genesis row (no prior row) gets the
+	// zero-hash prev_hash; every subsequent row chains to the previous row's
+	// row_hash. Rows already on the new schema (row_hash != '') are skipped.
+	if err := d.backfillAuditChain(); err != nil {
+		return fmt.Errorf("backfill audit chain: %w", err)
+	}
+	// The triggers live in Schema; CREATE TRIGGER IF NOT EXISTS is a no-op on
+	// existing DBs, so existing audit_log tables get the append-only triggers
+	// installed on first open too.
+
+	// F-03f: stamp the schema version. Informational only; the load-bearing
+	// migrations above are idempotent and self-check via PRAGMA table_info.
+	if _, err := d.writer.Exec(
+		`INSERT INTO schema_meta(key, value) VALUES('schema_version', ?)
+		 ON CONFLICT(key) DO UPDATE SET value = excluded.value`,
+		schemaVersion); err != nil {
+		return fmt.Errorf("stamp schema_version: %w", err)
 	}
 	for _, p := range defaultPolicy {
 		if _, err := d.writer.Exec(
@@ -144,6 +198,149 @@ func (d *DB) migrate() error {
 			p.Key, p.Value, p.Unit, p.Description); err != nil {
 			return fmt.Errorf("seed policy %s: %w", p.Key, err)
 		}
+	}
+	return nil
+}
+
+// backfillAuditChain hashes every pre-existing audit_log row that landed on
+// disk before the chain existed. Without this, VerifyAuditChain reports those
+// rows as tampered (row_hash = '' doesn't match the recomputed hash).
+//
+// We walk in id order so each row's prev_hash can be set from the previous
+// row's freshly computed hash. The audit_log_no_update trigger would block
+// us if we wrote row_hash from outside; instead we DROP the trigger, run
+// the back-fill, then re-create it. The window is a few microseconds on the
+// local file; nothing else holds the connection because we use the writer
+// pool's single connection.
+func (d *DB) backfillAuditChain() error {
+	const zeroHash = "0000000000000000000000000000000000000000000000000000000000000000"
+
+	rows, err := d.writer.Query(
+		`SELECT id, ts, actor, action, subject, detail, prev_hash, row_hash
+		 FROM audit_log ORDER BY id ASC`)
+	if err != nil {
+		return err
+	}
+	type row struct {
+		id                  int64
+		ts, actor, action   string
+		subject, detail     string
+		prevHash, rowHash   string
+	}
+	var entries []row
+	for rows.Next() {
+		var r row
+		if err := rows.Scan(&r.id, &r.ts, &r.actor, &r.action, &r.subject, &r.detail, &r.prevHash, &r.rowHash); err != nil {
+			rows.Close()
+			return err
+		}
+		entries = append(entries, r)
+	}
+	if err := rows.Err(); err != nil {
+		rows.Close()
+		return err
+	}
+	rows.Close()
+
+	if len(entries) == 0 {
+		return nil
+	}
+
+	needsBackfill := false
+	for _, r := range entries {
+		if r.rowHash == "" {
+			needsBackfill = true
+			break
+		}
+	}
+	if !needsBackfill {
+		return nil
+	}
+
+	// Drop the trigger so we can UPDATE row_hash on legacy rows. Recreate
+	// it before returning; even an interrupted back-fill leaves the table
+	// trigger-free (which is the original pre-F-02 state), so the trigger
+	// re-install closes the audit-evidence gap.
+	if _, err := d.writer.Exec(`DROP TRIGGER IF EXISTS audit_log_no_update`); err != nil {
+		return err
+	}
+	defer func() {
+		_, _ = d.writer.Exec(`CREATE TRIGGER IF NOT EXISTS audit_log_no_update
+BEFORE UPDATE ON audit_log
+WHEN NOT (
+    OLD.row_hash = ''
+    AND NEW.row_hash <> ''
+    AND NEW.id = OLD.id
+    AND NEW.ts = OLD.ts
+    AND NEW.actor = OLD.actor
+    AND NEW.action = OLD.action
+    AND NEW.subject = OLD.subject
+    AND NEW.detail = OLD.detail
+    AND NEW.prev_hash = OLD.prev_hash
+)
+BEGIN
+    SELECT RAISE(ABORT, 'audit_log is append-only: UPDATE is forbidden (F-02 tamper-evidence)');
+END`)
+	}()
+
+	var prevHash string
+	for _, r := range entries {
+		if r.rowHash != "" {
+			// Already on the new schema; use as the running anchor so the
+			// back-fill below chains correctly across mixed-history rows.
+			prevHash = r.rowHash
+			continue
+		}
+		wantPrev := zeroHash
+		if prevHash != "" {
+			wantPrev = prevHash
+		}
+		newHash := computeRowHash(r.id, wantPrev, r.ts, r.actor, r.action, r.subject, r.detail)
+		if r.prevHash != wantPrev {
+			if _, err := d.writer.Exec(
+				`UPDATE audit_log SET prev_hash = ? WHERE id = ?`,
+				wantPrev, r.id); err != nil {
+				return err
+			}
+		}
+		if _, err := d.writer.Exec(
+			`UPDATE audit_log SET row_hash = ? WHERE id = ?`,
+			newHash, r.id); err != nil {
+			return err
+		}
+		prevHash = newHash
+	}
+	return nil
+}
+
+// schemaVersion is stamped in the schema_meta table on every Open. Bump when
+// the migration list in migrate() gains a new step (informational; the
+// migrations themselves are idempotent and don't read this value).
+const schemaVersion = "2026-08-31.1"
+
+// applyColumnIfMissing runs `addSQL` only when the named column is absent from
+// the named table. Uses PRAGMA table_info, which is the supported runtime
+// introspection primitive in SQLite. Replaces the old "version-monotonic
+// migration" pattern (which we deliberately don't introduce — see F-02c).
+func applyColumnIfMissing(handle *sql.DB, table, column, addSQL string) error {
+	rows, err := handle.Query(`PRAGMA table_info(` + table + `)`)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var cid int
+		var name, ctype string
+		var notnull, dflt, pk interface{}
+		if err := rows.Scan(&cid, &name, &ctype, &notnull, &dflt, &pk); err != nil {
+			return err
+		}
+		if name == column {
+			return nil
+		}
+	}
+	if _, err := handle.Exec(addSQL); err != nil {
+		return err
 	}
 	return nil
 }
