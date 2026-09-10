@@ -406,7 +406,13 @@ const schemaVersion = "2026-08-31.1"
 // the named table. Uses PRAGMA table_info, which is the supported runtime
 // introspection primitive in SQLite. Replaces the old "version-monotonic
 // migration" pattern (which we deliberately don't introduce — see F-02c).
+//
+// table is concatenated into the PRAGMA (SQLite has no parameter binding there),
+// so it is restricted to the identifier charset the schema actually uses.
 func applyColumnIfMissing(handle *sql.DB, table, column, addSQL string) error {
+	if !safeIdent(table) {
+		return fmt.Errorf("ledger: refuse table name %q in migration", table)
+	}
 	rows, err := handle.Query(`PRAGMA table_info(` + table + `)`)
 	if err != nil {
 		return err
@@ -560,8 +566,33 @@ func (p Policy) Str(key, def string) string {
 	return def
 }
 
+// numericPolicyKeys are threshold policies that must stay parseable as integers.
+// An unparseable value would silently fall back to the engine default via
+// Policy.Int, so the operator would believe a threshold was set when it was not.
+var numericPolicyKeys = map[string]bool{
+	"dormancy_days": true, "dormant_reactivation_pct": true,
+	"internal_report_threshold_minor": true, "kyc_tier1_limit_minor": true,
+	"passthrough_ratio_pct": true, "passthrough_window_hours": true,
+	"pep_review_pct": true, "round_amount_min_repeats": true,
+	"round_amount_modulus_minor": true, "structuring_band_pct": true,
+	"structuring_min_txns": true, "structuring_window_hours": true,
+	"velocity_min_baseline_txns": true, "velocity_multiple": true,
+	"velocity_window_hours": true,
+}
+
 // Set updates one policy value and records the change in the audit log.
 func (d *DB) Set(ctx context.Context, actor, key, value string) error {
+	if key == "" {
+		return errors.New("policy.set: empty key")
+	}
+	if value == "" {
+		return fmt.Errorf("policy.set: empty value for %q", key)
+	}
+	if numericPolicyKeys[key] {
+		if _, err := strconv.ParseInt(strings.TrimSpace(value), 10, 64); err != nil {
+			return fmt.Errorf("policy.set: %s must be an integer, got %q", key, value)
+		}
+	}
 	res, err := d.writer.ExecContext(ctx, `UPDATE policy SET value = ? WHERE key = ?`, value, key)
 	if err != nil {
 		return err
@@ -571,6 +602,25 @@ func (d *DB) Set(ctx context.Context, actor, key, value string) error {
 		return fmt.Errorf("unknown policy key %q", key)
 	}
 	return d.Audit(ctx, actor, "policy.set", key, value)
+}
+
+// safeIdent reports whether s is a simple SQLite identifier (letters, digits, underscore).
+func safeIdent(s string) bool {
+	if s == "" {
+		return false
+	}
+	for i, r := range s {
+		switch {
+		case r >= 'a' && r <= 'z', r >= 'A' && r <= 'Z', r == '_':
+		case r >= '0' && r <= '9':
+			if i == 0 {
+				return false
+			}
+		default:
+			return false
+		}
+	}
+	return true
 }
 
 // ── members and transactions ─────────────────────────────────────────────────
@@ -601,15 +651,25 @@ func (d *DB) UpsertAccount(ctx context.Context, id, memberID, kind, currency str
 	return err
 }
 
-// InsertTxn adds one transaction. Idempotent on transaction id so re-importing a
-// fixture file cannot double-count and manufacture a false velocity alert.
+// InsertTxn upserts one transaction by id.
+//
+// Re-running `kanzu init` must re-anchor fixture timestamps: the demo CSVs store
+// day offsets relative to seed time, and ON CONFLICT DO NOTHING would freeze the
+// original dates so "this week" is empty days later. Upserting keeps the id
+// stable (no double-counting, no alert-id churn) while refreshing the window.
 func (d *DB) InsertTxn(ctx context.Context, t Txn) error {
 	_, err := d.writer.ExecContext(ctx,
 		`INSERT INTO transactions
 		   (id, account_id, member_id, ts, direction, channel, amount_minor, currency,
 		    counterparty, counterparty_country, counterparty_account, narrative, reference)
 		 VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)
-		 ON CONFLICT(id) DO NOTHING`,
+		 ON CONFLICT(id) DO UPDATE SET
+		   account_id=excluded.account_id, member_id=excluded.member_id, ts=excluded.ts,
+		   direction=excluded.direction, channel=excluded.channel,
+		   amount_minor=excluded.amount_minor, currency=excluded.currency,
+		   counterparty=excluded.counterparty, counterparty_country=excluded.counterparty_country,
+		   counterparty_account=excluded.counterparty_account, narrative=excluded.narrative,
+		   reference=excluded.reference`,
 		t.ID, t.AccountID, t.MemberID, fmtTS(t.TS), strings.ToLower(t.Direction),
 		strings.ToLower(t.Channel), t.AmountMinor, t.Currency, t.Counterparty,
 		strings.ToUpper(t.Country), t.CounterpartyAccount, t.Narrative, t.Reference)

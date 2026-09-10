@@ -299,7 +299,7 @@ func BuildPlan(text string, now time.Time) Plan {
 				"KYC tier, risk band and PEP status gate everything downstream."},
 			{ToolLedgerQuery, ledgerArgs, "Read the member's activity for the window."},
 			{ToolRulesScan, map[string]string{"rule_ids": "ALL"},
-				"Evaluate all eight typologies so the profile reflects current exposure."},
+				"Evaluate all ten typologies so the profile reflects current exposure."},
 		}
 
 	case IntentSummary:

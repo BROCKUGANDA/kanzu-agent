@@ -320,3 +320,105 @@ func TestMigrationAddsMissingColumns(t *testing.T) {
 		t.Errorf("post-migration chain broken at id=%d", id)
 	}
 }
+
+// TestPolicySetValidation pins the production guards on `kanzu policy`:
+// unknown keys, empty values, and non-integer numeric thresholds must fail
+// closed rather than silently writing a value the engine will ignore.
+func TestPolicySetValidation(t *testing.T) {
+	db, err := Open(filepath.Join(t.TempDir(), "policy.db"))
+	if err != nil {
+		t.Fatalf("open: %v", err)
+	}
+	t.Cleanup(func() { db.Close() })
+	ctx := context.Background()
+
+	if err := db.Set(ctx, "test", "does_not_exist", "1"); err == nil {
+		t.Error("unknown key accepted; want error")
+	}
+	if err := db.Set(ctx, "test", "structuring_min_txns", ""); err == nil {
+		t.Error("empty value accepted; want error")
+	}
+	if err := db.Set(ctx, "test", "structuring_min_txns", "not-a-number"); err == nil {
+		t.Error("non-integer value accepted for numeric policy; want error")
+	}
+	if err := db.Set(ctx, "test", "", "1"); err == nil {
+		t.Error("empty key accepted; want error")
+	}
+	if err := db.Set(ctx, "test", "structuring_min_txns", "4"); err != nil {
+		t.Errorf("valid numeric policy rejected: %v", err)
+	}
+	p, err := db.LoadPolicy(ctx)
+	if err != nil {
+		t.Fatalf("LoadPolicy: %v", err)
+	}
+	if got := p.Int("structuring_min_txns", 0); got != 4 {
+		t.Errorf("after set, structuring_min_txns = %d, want 4", got)
+	}
+	// Non-numeric keys (currency) still accept free-form values.
+	if err := db.Set(ctx, "test", "currency", "UGX"); err != nil {
+		t.Errorf("currency set rejected: %v", err)
+	}
+}
+
+// TestSafeIdent pins the migration table-name guard.
+func TestSafeIdent(t *testing.T) {
+	for _, ok := range []string{"audit_log", "transactions", "policy", "t1", "_x"} {
+		if !safeIdent(ok) {
+			t.Errorf("safeIdent(%q) = false, want true", ok)
+		}
+	}
+	for _, bad := range []string{"", "1abc", "a;b", "a b", "a-b", "policy; DROP TABLE", "a\"b"} {
+		if safeIdent(bad) {
+			t.Errorf("safeIdent(%q) = true, want false", bad)
+		}
+	}
+}
+
+// TestInsertTxnReanchorsOnUpsert pins the demo-date fix: re-running init with a
+// new anchor must move fixture timestamps. DO NOTHING would freeze the original
+// dates so "this week" is empty days later.
+func TestInsertTxnReanchorsOnUpsert(t *testing.T) {
+	db, err := Open(filepath.Join(t.TempDir(), "seed.db"))
+	if err != nil {
+		t.Fatalf("open: %v", err)
+	}
+	t.Cleanup(func() { db.Close() })
+	ctx := context.Background()
+
+	t1 := time.Date(2026, 9, 1, 12, 0, 0, 0, time.UTC)
+	txn := Txn{
+		ID: "T-1", AccountID: "A-1", MemberID: "M-001", TS: t1,
+		Direction: "credit", Channel: "cash", AmountMinor: 100000, Currency: "UGX",
+	}
+	if err := db.UpsertMember(ctx, Member{ID: "M-001", Name: "Test", JoinedAt: t1.AddDate(-1, 0, 0)}); err != nil {
+		t.Fatalf("member: %v", err)
+	}
+	if err := db.UpsertAccount(ctx, "A-1", "M-001", "savings", "UGX", t1); err != nil {
+		t.Fatalf("account: %v", err)
+	}
+	if err := db.InsertTxn(ctx, txn); err != nil {
+		t.Fatalf("insert: %v", err)
+	}
+
+	t2 := t1.AddDate(0, 0, 30)
+	txn.TS = t2
+	if err := db.InsertTxn(ctx, txn); err != nil {
+		t.Fatalf("upsert: %v", err)
+	}
+
+	got, err := db.TxnsBetween(ctx, t2.Add(-time.Hour), t2.Add(time.Hour))
+	if err != nil {
+		t.Fatalf("query: %v", err)
+	}
+	if len(got) != 1 || !got[0].TS.Equal(t2) {
+		t.Fatalf("re-anchor failed: got %d txns, ts=%v want %v", len(got), got, t2)
+	}
+	// Still exactly one row — no double-count.
+	all, err := db.TxnsBetween(ctx, t1.AddDate(-1, 0, 0), t2.AddDate(0, 0, 1))
+	if err != nil {
+		t.Fatalf("query all: %v", err)
+	}
+	if len(all) != 1 {
+		t.Fatalf("expected 1 txn after upsert, got %d", len(all))
+	}
+}

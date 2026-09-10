@@ -262,6 +262,10 @@ func (a *App) renderSection(w, rows int) string {
 
 	switch a.navIdx {
 	case SecScan:
+		if len(st.alerts) == 0 {
+			return emptyState("No rules fired in this window.",
+				"That is a clean result, not an error. If the ledger is empty, run: kanzu init")
+		}
 		return renderAlerts(st.alerts, w, rows)
 	case SecReports:
 		return renderCases(st.cases, w, rows)

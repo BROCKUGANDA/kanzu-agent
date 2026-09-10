@@ -57,6 +57,8 @@ type App struct {
 	providers Providers
 	ctx       context.Context
 	cancel    context.CancelFunc
+	// modelReady is true when weights + llama.cpp resolved at startup.
+	modelReady bool
 
 	// layout
 	width  int
@@ -70,6 +72,8 @@ type App struct {
 	input    textarea.Model
 	busy     bool
 	err      error
+	// pendingThinking is true while the last bubble is the "working…" placeholder.
+	pendingThinking bool
 
 	// non-chat sections
 	sections []sectionState
@@ -78,7 +82,8 @@ type App struct {
 
 // NewApp constructs the App. Pass the real runAgent function from cmd/kanzu,
 // plus the read-only section providers (any of which may be nil).
-func NewApp(fn AgentFunc, p Providers) *App {
+// modelReady should be true when the LLM runner resolved at startup.
+func NewApp(fn AgentFunc, p Providers, modelReady bool) *App {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	ta := textarea.New()
@@ -94,18 +99,21 @@ func NewApp(fn AgentFunc, p Providers) *App {
 	vp := viewport.New(80, 20)
 
 	return &App{
-		runAgent:  fn,
-		providers: p,
-		ctx:       ctx,
-		cancel:    cancel,
-		input:     ta,
-		viewport:  vp,
-		sections:  make([]sectionState, secCount),
-		scanDays:  7,
+		runAgent:   fn,
+		providers:  p,
+		ctx:        ctx,
+		cancel:     cancel,
+		modelReady: modelReady,
+		input:      ta,
+		viewport:   vp,
+		sections:   make([]sectionState, secCount),
+		scanDays:   7,
 		messages: []ChatMessage{
 			{
 				Role: RoleAgent,
 				Text: "Welcome. I'm your offline compliance assistant for Ugandan SACCOs.\n\n" +
+					"First time here? If the ledger is empty, run:\n" +
+					"  kanzu init\n\n" +
 					"Try: \"flag suspicious transactions this week\"\n" +
 					"     \"chunguza miamala ya kutiliwa shaka wiki hii\"  (:lang sw)\n" +
 					"     \"kebera ebyenfuna eby'obucwezi sabbiiti eno\"  (:lang lg)\n\n" +
@@ -144,6 +152,11 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case agentResultMsg:
 		a.busy = false
+		// Drop the trailing "thinking…" placeholder before appending the reply.
+		if a.pendingThinking && len(a.messages) > 0 {
+			a.messages = a.messages[:len(a.messages)-1]
+		}
+		a.pendingThinking = false
 		if m.err != nil {
 			a.messages = append(a.messages, ChatMessage{
 				Role: RoleAgent,
@@ -250,6 +263,7 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				Lang: string(a.currentLang()),
 				Ts:   time.Now(),
 			})
+			a.pendingThinking = true
 			a.busy = true
 			a.refreshViewport()
 			a.viewport.GotoBottom()
@@ -334,7 +348,13 @@ func (a *App) renderSidebar() string {
 	// Status
 	b.WriteString(OfflineStyle.Render("● OFFLINE") + "\n")
 	b.WriteString(MutedStyle.Render("  SQLite · llama.cpp") + "\n")
-	b.WriteString(MutedStyle.Render("  Qwen 1.5B Q4_K_M") + "\n\n")
+	if a.modelReady {
+		b.WriteString(MutedStyle.Render("  Qwen 1.5B Q4_K_M") + "\n")
+	} else {
+		b.WriteString(badgeWarnStyle.Render("  model offline") + "\n")
+		b.WriteString(MutedStyle.Render("  deterministic only") + "\n")
+	}
+	b.WriteString("\n")
 
 	// Language
 	b.WriteString(MutedStyle.Render("  Lang: ") + ActiveNavStyle.Render(string(a.currentLang())) + "\n")
@@ -487,6 +507,7 @@ func (a *App) handleCommand(raw string) (tea.Model, tea.Cmd) {
 		a.messages = append(a.messages, ChatMessage{
 			Role: RoleAgent, Text: thinkingText(a.currentLang()), Ts: time.Now(),
 		})
+		a.pendingThinking = true
 		a.busy = true
 		a.refreshViewport()
 		a.viewport.GotoBottom()
@@ -546,6 +567,17 @@ func outcomeToMessages(out *agent.Outcome, lang i18n.Lang) []ChatMessage {
 	ev := out.Evidence
 
 	// ── Ledger summary ──
+	if ev.Summary.TxnCount == 0 && len(ev.Findings) == 0 {
+		msgs = append(msgs, ChatMessage{
+			Role: RoleAgent,
+			Lang: string(lang),
+			Text: "Ledger is empty for this window — nothing to analyse.\n" +
+				"If this is a fresh install, seed demo data from a terminal:\n" +
+				"  kanzu init",
+			Ts: ts,
+		})
+		return msgs
+	}
 	if ev.Summary.TxnCount > 0 {
 		cur := ev.Summary.Currency
 		if cur == "" {
@@ -674,7 +706,11 @@ func helpText() string {
   Shift+Enter      new line in message
   Ctrl+L           cycle language EN → SW → LG → EN
   Tab              move sidebar selection
-  Esc              unfocus input / quit`
+  Esc              unfocus input / quit
+
+First-time setup (from a terminal, not this TUI):
+  kanzu init       seed the demo ledger + knowledge corpus
+  kanzu doctor     verify model, llama.cpp, and local data`
 }
 
 func joinIDs(ids []string, n int) string {

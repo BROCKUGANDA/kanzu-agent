@@ -28,11 +28,13 @@ A TUI (terminal) agent that runs entirely on-device:
 
 ## Quick Start
 
+### Linux / macOS
+
 ```bash
 # 1. Clone + build (Go 1.25, zero CGo)
 git clone https://github.com/BROCKUGANDA/kanzu-agent.git
 cd kanzu-agent
-CGO_ENABLED=0 go build -mod=vendor -o bin/kanzu ./cmd/kanzu   # bin/kanzu.exe on Windows
+CGO_ENABLED=0 go build -mod=vendor -o bin/kanzu ./cmd/kanzu
 
 # 2. Download the model (Qwen2.5-1.5B Q4_K_M, ~1 GB)
 bash scripts/download_model.sh
@@ -44,6 +46,35 @@ bash scripts/download_model.sh
 ./bin/kanzu chat
 ```
 
+### Windows (PowerShell)
+
+```powershell
+# 1. Clone + build (Go 1.25, zero CGo; no C compiler needed)
+git clone https://github.com/BROCKUGANDA/kanzu-agent.git
+cd kanzu-agent
+$env:CGO_ENABLED = "0"
+go build -mod=vendor -o bin\kanzu.exe .\cmd\kanzu
+
+# 2. Download the model (~1 GB, verified by SHA-256)
+powershell -ExecutionPolicy Bypass -File scripts\download_model.ps1
+
+# 3. Initialise the local SQLite ledger + KB index
+.\bin\kanzu.exe init
+
+# 4. Run the TUI
+.\bin\kanzu.exe chat
+```
+
+> **First run:** if you skip `init`, `ask` / `scan` / the TUI will report an
+> empty ledger and tell you to run `kanzu init`. Deterministic paths
+> (`scan`, `doctor`, `init`) work without the model; only narration needs the
+> GGUF and llama.cpp.
+>
+> **llama.cpp:** the binary is resolved from `KANZU_LLAMA_CLI`, then
+> `vendor/llama.cpp/build/bin/`, then `PATH`. On Windows the easiest install is
+> `winget install ggml.llamacpp`; on Linux/macOS run `bash scripts/setup_llama_cpp.sh`
+> or use a release tarball. `kanzu doctor` reports whether the binary responds.
+
 ### Quick Commands (outside the TUI)
 
 ```bash
@@ -52,7 +83,9 @@ kanzu ask -lang en "flag suspicious transactions this week"
 kanzu ask -lang sw "chunguza miamala ya wiki hii"
 kanzu ask -lang lg "kebera ebyenfuna bya mwezi"
 kanzu send "<peer> <message>"       # enqueue an offline message
-kanzu policy set <key> <value>      # adjust thresholds
+kanzu policy set <key> <value>      # adjust thresholds (also: kanzu policy <key> <value>)
+kanzu backup path\to\copy.db        # checkpoint + copy the ledger
+kanzu encrypt-db path\to\enc.db     # AES-GCM envelope (needs KANZU_DB_KEY)
 ```
 
 ## TUI Navigation

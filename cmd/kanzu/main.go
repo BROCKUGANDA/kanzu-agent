@@ -59,8 +59,9 @@ commands:
   bench                Measure end-to-end agent throughput locally
   backup <path>        Copy ledger to <path> (checkpoint + audit row)
   vacuum               Reclaim free pages (VACUUM + checkpoint)
-  encrypt-db <dst>     Encrypt ledger to <dst> (AES-GCM, needs KANZU_DB_KEY)
-  decrypt-db <dst>     Decrypt ledger to <dst> (needs KANZU_DB_KEY)
+  encrypt-db <dst>     Encrypt the live ledger to <dst> (AES-GCM, needs KANZU_DB_KEY)
+  decrypt-db <dst>     Decrypt an encrypted ledger to <dst> (needs KANZU_DB_KEY)
+                       Source defaults to the live ledger path; pass -db <enc> to decrypt a file
   version              Print version information
 
 examples:
@@ -398,7 +399,9 @@ func cmdDoctor(ctx context.Context, cfg *config.Config) error {
 		fmt.Printf("[%s] %-16s %d rows\n", ok(counts[t] > 0 || t == "alerts" || t == "cases" || t == "messages"), t, counts[t])
 	}
 	if counts["transactions"] == 0 || counts["kb_chunks"] == 0 {
-		fmt.Printf("\n       ledger or corpus is empty — run: kanzu init\n")
+		fmt.Printf("\n[warn] first-run: ledger or corpus is empty\n")
+		fmt.Printf("       seed demo data with:  kanzu init\n")
+		fmt.Printf("       then try:  kanzu ask \"flag suspicious transactions this week\"\n")
 	}
 
 	// N4: an empty alerts table after a fresh init is expected, but an empty
@@ -495,7 +498,7 @@ func cmdChat(ctx context.Context, cfg *config.Config, noModel bool) error {
 	}
 
 	program := tea.NewProgram(
-		tui.NewApp(runAgent, sectionProviders(s, cfg)),
+		tui.NewApp(runAgent, sectionProviders(s, cfg), s.runner != nil),
 		tea.WithAltScreen(),
 		tea.WithMouseCellMotion(),
 	)
@@ -796,6 +799,9 @@ func cmdAsk(ctx context.Context, cfg *config.Config, request string, noModel boo
 		return err
 	}
 	defer s.Close()
+	if n, err := s.db.Counts(ctx); err == nil && n["transactions"] == 0 {
+		fmt.Fprintln(os.Stderr, "ledger is empty — seed the demo data first:  kanzu init")
+	}
 	return tui.New(s.agent, os.Stdin, os.Stdout).Ask(ctx, request)
 }
 
@@ -805,6 +811,15 @@ func cmdScan(ctx context.Context, cfg *config.Config, days int, member string) e
 		return err
 	}
 	defer s.Close()
+
+	// First-run: an empty ledger produces "no alerts" that looks like a clean
+	// result. Say so explicitly before the operator walks away thinking they
+	// ran a real scan.
+	if n, err := s.db.Counts(ctx); err == nil && n["transactions"] == 0 {
+		fmt.Fprintln(os.Stderr, "ledger is empty — no transactions to scan.")
+		fmt.Fprintln(os.Stderr, "seed the demo ledger first:  kanzu init")
+		return errors.New("empty ledger; run kanzu init")
+	}
 
 	// F-06: same default-window warning as cmdReport — a 7-day scan with no
 	// alerts is a real signal only when the operator asked for 7 days.
@@ -895,6 +910,26 @@ func cmdSend(ctx context.Context, cfg *config.Config, body, peer string) error {
 	}
 	defer s.Close()
 
+	// Accept `kanzu send "<peer> <message>"` (README form) and the flag form
+	// `kanzu send -from <peer> "<message>"`. When -from is empty, peel the
+	// first whitespace-delimited token off the body as the peer.
+	body = strings.TrimSpace(body)
+	if body == "" {
+		return errors.New(`send needs a message, e.g. kanzu send "branch-01 flag M-001 this week"`)
+	}
+	if strings.TrimSpace(peer) == "" {
+		parts := strings.SplitN(body, " ", 2)
+		if len(parts) == 2 && parts[0] != "" {
+			peer = parts[0]
+			body = strings.TrimSpace(parts[1])
+		} else {
+			return errors.New(`send needs a peer: kanzu send "<peer> <message>" or kanzu send -from <peer> "<message>"`)
+		}
+	}
+	if body == "" {
+		return errors.New("send: message body is empty after peer token")
+	}
+
 	id, err := tui.Enqueue(ctx, s.db, peer, body, "", "queue")
 	if err != nil {
 		return err
@@ -934,6 +969,11 @@ func cmdPolicy(ctx context.Context, cfg *config.Config, args []string) error {
 	}
 	defer s.Close()
 
+	// Accept both `kanzu policy <key> <value>` and the documented
+	// `kanzu policy set <key> <value>` form.
+	if len(args) >= 1 && strings.EqualFold(args[0], "set") {
+		args = args[1:]
+	}
 	if len(args) >= 2 {
 		if err := s.db.Set(ctx, "cli", args[0], args[1]); err != nil {
 			return err
@@ -1100,7 +1140,7 @@ func cmdDecryptDB(_ context.Context, cfg *config.Config, dest string) error {
 		return err
 	}
 	if !enc {
-		return fmt.Errorf("decrypt-db: %s is not encrypted (no KANZU_ENC header)", src)
+		return fmt.Errorf("decrypt-db: %s is not encrypted (no KANZU_ENC header). Point -db at the encrypted file, e.g. kanzu -db backup.enc decrypt-db restored.db", src)
 	}
 	if err := ledger.DecryptFile(src, dest, key); err != nil {
 		return err

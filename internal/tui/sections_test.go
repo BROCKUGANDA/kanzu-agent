@@ -57,7 +57,7 @@ func testProviders() Providers {
 // newSizedApp returns an App that already knows its terminal size.
 func newSizedApp(t *testing.T, p Providers) *App {
 	t.Helper()
-	a := NewApp(stubAgent, p)
+	a := NewApp(stubAgent, p, true)
 	a.Update(tea.WindowSizeMsg{Width: 120, Height: 40})
 	return a
 }

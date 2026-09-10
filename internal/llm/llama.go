@@ -181,7 +181,7 @@ func Resolve(pref string) (string, error) {
 			return p, nil
 		}
 	}
-	return "", fmt.Errorf("%w: tried %s. Build it with scripts/setup_llama_cpp.sh, or set KANZU_LLAMA_CLI",
+	return "", fmt.Errorf("%w: tried %s. Install llama.cpp (winget install ggml.llamacpp on Windows, or scripts/setup_llama_cpp.sh), or set KANZU_LLAMA_CLI",
 		ErrNoBinary, strings.Join(candidates, ", "))
 }
 
@@ -388,6 +388,9 @@ func (r *Runner) writePrompt(prompt string) (string, func(), error) {
 		return "", func() {}, fmt.Errorf("create prompt file: %w", err)
 	}
 	name := f.Name()
+	// Prompts can contain member identifiers and amounts. Keep them owner-only
+	// even though they are deleted after the run (or retained under KeepPrompts).
+	_ = os.Chmod(name, 0o600)
 	if _, err := f.WriteString(prompt); err != nil {
 		f.Close()
 		os.Remove(name)

@@ -287,6 +287,93 @@ These are documented for the next round, not findings:
 
 ---
 
+## 12. Public-release hardening pass (2026-09-11)
+
+This pass focused on practicality for a first-time public user: empty-ledger
+guidance, Windows setup, CLI/docs mismatch, validation, and TUI polish.
+Import graph remains a clean DAG (`go list -deps` — no first-party cycles).
+
+### F-08 — empty ledger looks like a clean scan (HIGH, usability)
+
+**Status: FIXED.**
+- `kanzu scan` on an empty ledger now prints `ledger is empty — no transactions
+  to scan` + `seed the demo ledger first: kanzu init` and exits 1.
+- `kanzu ask` on an empty ledger prints the init hint on stderr before
+  continuing (deterministic evidence still renders).
+- `kanzu doctor` prints an explicit first-run `[warn]` block with next steps.
+- TUI welcome and Chat empty-results bubble both point at `kanzu init`.
+- Quick Scan empty state: "If the ledger is empty, run: kanzu init".
+
+### F-09 — thinking bubble never cleared in TUI (MEDIUM, UX)
+
+**Status: FIXED.** `pendingThinking` flag drops the placeholder on
+`agentResultMsg` before the real reply is appended.
+
+### F-10 — README claimed CLI forms that did not exist (MEDIUM, usability)
+
+**Status: FIXED.**
+- `kanzu policy set <key> <value>` now works (optional `set` token).
+- `kanzu send "<peer> <message>"` peels the first token as peer when `-from`
+  is unset; empty body/peer produce clear errors.
+- README Quick Start split into Linux/macOS + Windows PowerShell paths.
+
+### F-11 — Windows model download was bash-only (MEDIUM, usability)
+
+**Status: FIXED.** Added `scripts/download_model.ps1` (SHA-256 verify, primary
++ fallback URL). README documents the PowerShell path. llama.cpp missing-binary
+error now mentions `winget install ggml.llamacpp`.
+
+### F-12 — migration table name concatenation (LOW, defense-in-depth)
+
+**Status: FIXED.** `applyColumnIfMissing` rejects non-identifier table names
+via `safeIdent`. Test: `TestSafeIdent`.
+
+### F-13 — policy.set accepted values the engine would silently ignore (MEDIUM)
+
+**Status: FIXED.** Numeric threshold keys require an integer; empty key/value
+rejected. Test: `TestPolicySetValidation`.
+
+### F-14 — prompt temp files world-readable on POSIX (LOW)
+
+**Status: FIXED.** `os.Chmod(name, 0o600)` after `CreateTemp` in
+`llm.writePrompt`.
+
+### F-16 — re-init froze fixture dates; "this week" went empty (HIGH, demo-breaking)
+
+**Status: FIXED.** `InsertTxn` now upserts all fields on id conflict instead of
+`DO NOTHING`. Re-running `kanzu init` re-anchors the day-offset fixtures so
+"flag suspicious transactions this week" still has data days after first init.
+Regression test: `TestInsertTxnReanchorsOnUpsert`. Live: after re-init,
+`kanzu scan -days 7` fires R01/R02/R05/R06 again.
+
+### F-15 — encrypt rename left `.tmp` on failure (LOW)
+
+**Status: FIXED.** Rename failure removes the temp file.
+
+### Doc accuracy
+
+- planner profile step: "eight typologies" → "ten typologies".
+- encrypt.go header: documented PBKDF2-HMAC-SHA256 100k (was leftover "scrypt"
+  wording from an earlier draft).
+- decrypt-db usage clarifies `-db <enc>` as the encrypted source.
+- TUI sidebar shows `model offline · deterministic only` when the runner did
+  not resolve.
+
+### Gates re-run (2026-09-11)
+
+| Gate | Result |
+|---|---|
+| `go build -mod=vendor ./cmd/kanzu` | 0 |
+| `go vet -mod=vendor ./cmd/... ./internal/...` | 0 |
+| `go test -mod=vendor -count=1 ./cmd/... ./internal/...` | 0 |
+| `go list -deps ./cmd/kanzu \| grep '^net/'` | empty |
+| empty-ledger `scan` | exit 1 + init guidance |
+| `policy set structuring_min_txns 5` | 0 |
+| `policy set structuring_min_txns abc` | 1 (rejected) |
+| `send "branch-01 …"` | queued |
+
+---
+
 ## 10. Conclusion
 
 **Kanzu Agent is production-ready for its declared surface** (single-operator, offline, single-laptop SACCO compliance copilot). The most important guarantees — deterministic detection, no network at runtime, severity from code not the model, audit trail on every state change — are enforced by the type system, by `invariantsHold()`, by `go list -deps`, and by tests that already pass. The remaining items (F-01 through F-07) are either mitigated-by-design (F-01) or low-risk follow-ups that an active maintainer would close in a half-day.
@@ -295,4 +382,6 @@ These are documented for the next round, not findings:
 
 ---
 
-*Audit run by Hermes Agent (`production-hardening-audit` skill), 2026-08-31. All gate commands reproduced inline; no audit claims depend on docs alone.*
+*Audit run by Hermes Agent (`production-hardening-audit` skill), 2026-08-31. All gate commands reproduced inline; no audit claim depends on docs alone.*
+
+*Public-release pass 2026-09-11: see §12.*

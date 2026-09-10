@@ -5,11 +5,11 @@
 // so the bytes on disk are opaque. The live file remains 0600 either way.
 //
 // Design:
-//   - Header: 9 bytes "KANZU_ENC" + 1 byte version (0x01)
-//   - Salt: 16 random bytes (for scrypt)
+//   - Header: 10 bytes "KANZU_ENC\x01"
+//   - Salt: 16 random bytes (for PBKDF2)
 //   - Nonce: 12 random bytes (for GCM)
 //   - Ciphertext: AES-256-GCM(key, nonce, plaintext)
-//   - Key: scrypt(passphrase, salt, N=32768, r=8, p=1, 32)
+//   - Key: PBKDF2-HMAC-SHA256(passphrase, salt, 100_000 iterations, 32 bytes)
 //   - Decrypt validates header + GCM tag; wrong passphrase fails closed.
 //
 // This is deliberately not SQLCipher — it keeps the zero-CGO invariant and
@@ -115,7 +115,11 @@ func EncryptFile(srcPath, dstPath, passphrase string) error {
 		_ = os.Remove(tmp)
 		return err
 	}
-	return os.Rename(tmp, dstPath)
+	if err := os.Rename(tmp, dstPath); err != nil {
+		_ = os.Remove(tmp)
+		return err
+	}
+	return nil
 }
 
 // DecryptFile reads an encrypted envelope at srcPath and writes plaintext to
